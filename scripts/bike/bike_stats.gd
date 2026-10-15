@@ -52,7 +52,7 @@ extends Resource
 
 @export_group("Suspensão")
 @export_range(0.1, 1.5, 0.01, "suffix:m") var suspension_rest_length: float = 0.45
-@export_range(0.1, 1.0, 0.01, "suffix:m") var wheel_radius: float = 0.35
+@export_range(0.1, 1.0, 0.01, "suffix:m") var wheel_radius: float = 0.375
 @export_range(1000.0, 50000.0, 100.0, "suffix:N/m") var spring_stiffness: float = 9000.0
 @export_range(0.0, 5000.0, 10.0, "suffix:N·s/m") var spring_damping: float = 1100.0
 ## Teto de força por roda, evita "estilingue" em pousos muito fortes.

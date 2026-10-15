@@ -4,6 +4,9 @@ extends RigidBody3D
 ## A frente da moto é -Z (padrão do Godot).
 
 @export var stats: BikeStats
+## Nós visuais das rodas: seguem a suspensão e giram com a velocidade.
+@export var front_wheel: Node3D
+@export var rear_wheel: Node3D
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
@@ -22,8 +25,6 @@ var _spawn_transform: Transform3D
 @onready var _front_ray: RayCast3D = $FrontWheelRay
 @onready var _rear_ray: RayCast3D = $RearWheelRay
 @onready var _visual: Node3D = $Visual
-@onready var _front_wheel: Node3D = $Visual/FrontWheel
-@onready var _rear_wheel: Node3D = $Visual/RearWheel
 
 
 func _ready() -> void:
@@ -55,8 +56,8 @@ func _physics_process(delta: float) -> void:
 		reset_to_spawn()
 		return
 
-	front_grounded = _apply_suspension(_front_ray, _front_wheel)
-	rear_grounded = _apply_suspension(_rear_ray, _rear_wheel)
+	front_grounded = _apply_suspension(_front_ray, front_wheel)
+	rear_grounded = _apply_suspension(_rear_ray, rear_wheel)
 	_ground_normal = _average_ground_normal()
 
 	var throttle := Input.get_action_strength("acelerar")
@@ -84,14 +85,14 @@ func _apply_suspension(ray: RayCast3D, wheel: Node3D) -> bool:
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
 	# Sem isso o raio usaria a posição do passo anterior e mediria errado em alta velocidade.
 	ray.force_raycast_update()
+	var up := global_basis.y
 	if not ray.is_colliding():
-		wheel.position.y = ray.position.y - stats.suspension_rest_length
+		wheel.global_position = ray.global_position - up * stats.suspension_rest_length
 		return false
 
 	var origin := ray.global_position
 	var distance := origin.distance_to(ray.get_collision_point())
 	var compression := ray_length - distance
-	var up := global_basis.y
 	var com := global_transform * center_of_mass
 	var point_velocity := linear_velocity + angular_velocity.cross(origin - com)
 
@@ -100,7 +101,7 @@ func _apply_suspension(ray: RayCast3D, wheel: Node3D) -> bool:
 	var force := clampf(spring + damper, 0.0, stats.max_suspension_force)
 	apply_force(up * force, origin - global_position)
 
-	wheel.position.y = ray.position.y - (distance - stats.wheel_radius)
+	wheel.global_position = origin - up * (distance - stats.wheel_radius)
 	return true
 
 
@@ -198,5 +199,5 @@ func _update_visuals(delta: float) -> void:
 	_visual.rotation.z = lerp_angle(_visual.rotation.z, lean, clampf(8.0 * delta, 0.0, 1.0))
 
 	var spin := -forward_speed / stats.wheel_radius * delta
-	_front_wheel.rotate_x(spin)
-	_rear_wheel.rotate_x(spin)
+	front_wheel.rotate_x(spin)
+	rear_wheel.rotate_x(spin)

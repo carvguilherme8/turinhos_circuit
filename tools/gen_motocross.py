@@ -247,13 +247,13 @@ def build_cubes(pal):
     rake = ("x", RAKE)
 
     # ---- rodas
-    C += wheel("front_wheel", fa, "front_wheel")
-    C += wheel("rear_wheel", REAR_AXLE, "rear_wheel")
+    C += wheel("wheel_front", fa, "wheel_front")
+    C += wheel("wheel_rear", REAR_AXLE, "wheel_rear")
     # Disco e coroa em cruz (dois cubos com espessuras diferentes, sem faces coplanares)
-    C.append(Cube("brake_disc_a", "front_wheel", (2.0, 4.0, -14.0), (2.5, 8.0, -10.0), flat("metal_dark")))
-    C.append(Cube("brake_disc_b", "front_wheel", (2.0, 3.5, -13.5), (2.4, 8.5, -10.5), flat("metal_dark")))
-    C.append(Cube("sprocket_a", "rear_wheel", (-2.5, 4.0, 10.0), (-2.0, 8.0, 14.0), flat("gold")))
-    C.append(Cube("sprocket_b", "rear_wheel", (-2.4, 3.5, 10.5), (-2.0, 8.5, 13.5), flat("gold")))
+    C.append(Cube("brake_disc_a", "wheel_front", (2.0, 4.0, -14.0), (2.5, 8.0, -10.0), flat("metal_dark")))
+    C.append(Cube("brake_disc_b", "wheel_front", (2.0, 3.5, -13.5), (2.4, 8.5, -10.5), flat("metal_dark")))
+    C.append(Cube("sprocket_a", "wheel_rear", (-2.5, 4.0, 10.0), (-2.0, 8.0, 14.0), flat("gold")))
+    C.append(Cube("sprocket_b", "wheel_rear", (-2.4, 3.5, 10.5), (-2.0, 8.5, 13.5), flat("gold")))
 
     # ---- garfo (tudo inclinado 22,5° em torno do eixo da roda dianteira)
     C += mirror_x("fork_lower", "fork", (2.1, 5.0, -13.0), (3.4, 11.5, -11.0), flat("primary_dark"), rake, fa)
@@ -383,9 +383,9 @@ GROUPS = [
     ("motocross", (0, 0, 0), None),
     ("frame", (0, 0, 0), "motocross"),
     ("body", (0, 0, 0), "motocross"),
-    ("rear_wheel", REAR_AXLE, "motocross"),
+    ("wheel_rear", REAR_AXLE, "motocross"),
     ("fork", (0, 16.0, -9.0), "motocross"),
-    ("front_wheel", FRONT_AXLE, "fork"),
+    ("wheel_front", FRONT_AXLE, "fork"),
 ]
 
 
