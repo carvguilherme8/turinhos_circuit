@@ -16,7 +16,7 @@ enum Landing { PERFECT, ROUGH }
 const SAFE_POINT_INTERVAL := 0.5
 const SAFE_POINT_COUNT := 12
 ## Na queda, volta para um ponto seguro de pelo menos este tempo antes.
-const SAFE_POINT_MIN_AGE := 1.0
+const SAFE_POINT_MIN_AGE := 2.0
 
 @export var stats: BikeStats
 ## true = pilotada pelo teclado/controle; false = por um bot (BotDriver preenche bot_*).
@@ -59,6 +59,8 @@ var drift_amount: float = 0.0
 var drift_angle: float = 0.0
 ## Tempo no ar do salto atual (0 no chão).
 var air_time: float = 0.0
+## Deslizando sobre ondulações (costelas) empinado: frente no alto, corpo pela média do terreno.
+var skimming: bool = false
 ## false durante a contagem regressiva: a moto ignora acelerador, freio e direção.
 var controls_enabled: bool = true
 ## Comandos do bot (0..1; direção -1..1).
@@ -102,6 +104,13 @@ var _swingarm_length: float = 0.5
 var _rider_upper_rest_x: float = 0.0
 ## Tempo restante da "explosão" de poeira (pouso, queda).
 var _dust_burst: float = 0.0
+## Tempo desde que a roda traseira tocou o chão e normal do chão suavizada (média das ondas).
+var _rear_air_time: float = 0.0
+var _smoothed_normal: Vector3 = Vector3.UP
+## Extensão atual da suspensão traseira ao deslizar (sobe/desce aos poucos).
+var _skim_extension: float = 0.0
+## Último instante em que uma roda tocou uma ondulação (camada 2).
+var _last_bump_clock: float = -10.0
 var _visual_rest: Vector3
 var _visual_lean: float = 0.0
 ## Ângulo visual numa roda só (segue o pêndulo; no ar volta suave para zero).
@@ -125,6 +134,11 @@ func _ready() -> void:
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
 	_front_ray.target_position = Vector3(0.0, -ray_length, 0.0)
 	_rear_ray.target_position = Vector3(0.0, -ray_length, 0.0)
+	# Camada 1 = chão e obstáculos; camada 2 = ondulações (costelas). As rodas veem as duas;
+	# o corpo deixa de colidir com as ondulações enquanto desliza.
+	_front_ray.collision_mask = 1 | 2
+	_rear_ray.collision_mask = 1 | 2
+	collision_mask = 1 | 2
 	_spawn_transform = global_transform
 
 	# Posições de repouso do modelo, para animar a suspensão a partir delas.
@@ -194,6 +208,9 @@ func _physics_process(delta: float) -> void:
 	front_grounded = _apply_suspension(_front_ray, true)
 	rear_grounded = _apply_suspension(_rear_ray, false)
 	_ground_normal = _average_ground_normal()
+	_rear_air_time = 0.0 if rear_grounded else _rear_air_time + delta
+	if is_grounded():
+		_smoothed_normal = _smoothed_normal.slerp(_ground_normal, clampf(delta / 0.35, 0.0, 1.0)).normalized()
 
 	if is_crashed:
 		# Queda: sem controle nem equilíbrio, a física derruba a moto de verdade.
@@ -241,10 +258,18 @@ func _physics_process(delta: float) -> void:
 	_flat_velocity = linear_velocity - _ground_normal * linear_velocity.dot(_ground_normal)
 	drift_angle = rad_to_deg(forward.angle_to(_flat_velocity)) if _flat_velocity.length() > 2.0 else 0.0
 
-	if is_grounded():
+	skimming = _one_wheel_angle > deg_to_rad(stats.skim_min_wheelie_degrees) \
+			and forward_speed > stats.skim_min_speed and _rear_air_time < stats.skim_coyote_time
+	# A suspensão só estende sobre ondulações (num wheelie em chão liso a moto não "flutua").
+	var on_bumps := _clock - _last_bump_clock < 0.4
+	_skim_extension = move_toward(_skim_extension, stats.skim_extension if skimming and on_bumps else 0.0, 3.0 * delta)
+	set_collision_mask_value(2, not skimming)
+	if is_grounded() or skimming:
 		_drive(forward, throttle, brake, handbrake, delta)
 		_apply_grip(forward, delta)
 	_steer_and_balance(forward, delta)
+	if skimming:
+		_skim(delta)
 	_update_visuals(delta)
 	_update_dust(delta)
 
@@ -325,15 +350,22 @@ func _record_safe_point() -> void:
 ## Mola + amortecedor numa roda. Retorna true se a roda está tocando o chão.
 func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
+	if not is_front:
+		# Deslizando, a traseira estende para o corpo passar acima das ondas.
+		ray_length += _skim_extension
+		ray.target_position = Vector3(0.0, -ray_length, 0.0)
 	# Sem isso o raio usaria a posição do passo anterior e mediria errado em alta velocidade.
 	ray.force_raycast_update()
 	var up := global_basis.y
 	if not ray.is_colliding():
-		_set_wheel_height(is_front, ray.position.y - stats.suspension_rest_length)
+		_set_wheel_height(is_front, ray.position.y - (ray_length - stats.wheel_radius))
 		return false
 
 	var origin := ray.global_position
 	var hit := ray.get_collision_point()
+	var collider := ray.get_collider() as CollisionObject3D
+	if collider and collider.get_collision_layer_value(2):
+		_last_bump_clock = _clock
 	if is_front:
 		front_contact = hit
 	else:
@@ -346,6 +378,12 @@ func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 	var spring := compression * stats.spring_stiffness
 	var damper := -point_velocity.dot(up) * stats.spring_damping
 	var force := clampf(spring + damper, 0.0, stats.max_suspension_force)
+	if skimming:
+		if is_front:
+			force *= stats.skim_front_support  # frente leve: o piloto tira o peso dela
+		else:
+			force = clampf(spring * stats.skim_spring_scale + damper * stats.skim_damping_scale,
+					0.0, stats.max_suspension_force)
 	apply_force(up * force, origin - global_position)
 
 	_set_wheel_height(is_front, ray.position.y - (distance - stats.wheel_radius))
@@ -383,7 +421,7 @@ func _drive(forward: Vector3, throttle: float, brake: float, handbrake: bool, de
 		# Roda traseira travada: sem tração, só arrasta na terra.
 		new_speed = move_toward(new_speed, 0.0, stats.handbrake_deceleration * delta)
 		throttle = 0.0
-	elif throttle > 0.0 and rear_grounded and _one_wheel_angle > -0.05:
+	elif throttle > 0.0 and (rear_grounded or skimming) and _one_wheel_angle > -0.05:
 		# Aceleração cheia até 75% da máxima, depois diminui até zero na máxima.
 		var taper := clampf((stats.max_speed - speed) / (stats.max_speed * 0.25), 0.0, 1.0)
 		new_speed += throttle * stats.acceleration * taper * delta
@@ -433,8 +471,10 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 		var yaw := av.dot(_ground_normal)
 		av += _ground_normal * (target_yaw - yaw) * clampf(stats.steer_response * delta, 0.0, 1.0)
 		av = _rider_weight_ground(av, delta)
-	else:
-		_reset_one_wheel()
+	elif not skimming:
+		# Só um salto de verdade zera o wheelie (pulinhos entre ondas não).
+		if air_time > 0.3:
+			_reset_one_wheel()
 		av = _rider_weight_air(av, delta)
 
 	# Equilíbrio: só no eixo de rolagem (o pitch fica livre para suspensão e saltos).
@@ -460,7 +500,7 @@ func _rider_weight_ground(av: Vector3, delta: float) -> Vector3:
 	var previous := _one_wheel_angle
 	var accel := 0.0
 	if _one_wheel_angle >= 0.0:
-		if _rider_pitch > 0.05 and rear_grounded:
+		if _rider_pitch > 0.05 and (rear_grounded or _rear_air_time < stats.skim_coyote_time):
 			var throttle_share := lerpf(stats.wheelie_without_throttle, 1.0, _throttle)
 			accel += stats.wheelie_strength * _rider_pitch * throttle_share
 		accel -= stats.wheelie_brake_strength * _brake
@@ -536,6 +576,19 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	return av
 
 
+## Deslizando: segura a altura e o ângulo pela média do terreno, não onda a onda
+## (só a roda traseira "raspa" o topo das ondas).
+func _skim(delta: float) -> void:
+	var vertical := linear_velocity.dot(_smoothed_normal)
+	linear_velocity -= _smoothed_normal * vertical * clampf(stats.skim_vertical_damping * delta, 0.0, 1.0)
+	var pitch_axis := global_basis.x
+	var pitch := asin(clampf((-global_basis.z).dot(_smoothed_normal), -1.0, 1.0))
+	var target_rate := -pitch * stats.skim_pitch_hold
+	var av := angular_velocity
+	av += pitch_axis * (target_rate - av.dot(pitch_axis)) * clampf(20.0 * delta, 0.0, 1.0)
+	angular_velocity = av
+
+
 ## Giro de `angle` (+ nariz para cima) em torno do ponto onde a roda apoiada toca o chão:
 ## roda traseira no wheelie, dianteira com a traseira no alto. `ground` é a posição do chão
 ## sob o centro da moto no espaço em que o giro é aplicado.
@@ -551,7 +604,7 @@ func _update_visuals(delta: float) -> void:
 	var lean_degrees := stats.visual_lean_degrees * (1.0 + 0.4 * drift_amount)
 	var lean := -_steer * deg_to_rad(lean_degrees) * speed_ratio if is_grounded() else 0.0
 	_visual_lean = lerp_angle(_visual_lean, lean, clampf(8.0 * delta, 0.0, 1.0))
-	if is_grounded():
+	if is_grounded() or skimming:
 		_visual_pitch = _one_wheel_angle
 	else:
 		_visual_pitch = lerpf(_visual_pitch, 0.0, clampf(10.0 * delta, 0.0, 1.0))

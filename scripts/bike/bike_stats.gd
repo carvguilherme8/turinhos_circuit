@@ -86,6 +86,25 @@ extends Resource
 ## Whip: quanto a traseira é jogada para o lado no ar.
 @export_range(0.0, 60.0, 1.0, "suffix:°") var whip_yaw_angle: float = 30.0
 
+@export_group("Costelas (deslizar)")
+## Empinado acima disso e rápido o bastante, a moto desliza sobre ondulações (costelas):
+## a frente fica no alto e o corpo segue a média do terreno, não onda a onda.
+@export_range(0.0, 30.0, 0.5, "suffix:°") var skim_min_wheelie_degrees: float = 4.0
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var skim_min_speed: float = 7.0
+## Quanto o movimento vertical é amortecido ao deslizar (maior = mais "flutuante").
+@export_range(0.0, 30.0, 0.5) var skim_vertical_damping: float = 5.0
+## Força que segura o ângulo da moto pela média do terreno ao deslizar.
+@export_range(0.0, 20.0, 0.5) var skim_pitch_hold: float = 10.0
+## Tempo que a roda traseira pode sair do topo de uma onda sem perder tração nem o wheelie.
+@export_range(0.0, 1.0, 0.05, "suffix:s") var skim_coyote_time: float = 0.25
+## Quanto a suspensão traseira estende ao deslizar, para o corpo passar acima das ondas.
+@export_range(0.0, 1.5, 0.05, "suffix:m") var skim_extension: float = 0.45
+## Apoio da roda da frente ao deslizar (a frente fica "leve", não solta).
+@export_range(0.0, 1.0, 0.05) var skim_front_support: float = 0.6
+## Mola e amortecedor da traseira ao deslizar (multiplicadores).
+@export_range(0.1, 2.0, 0.05) var skim_spring_scale: float = 1.0
+@export_range(0.1, 4.0, 0.05) var skim_damping_scale: float = 1.3
+
 @export_group("Pouso")
 ## Tempo mínimo no ar para o pouso ser avaliado (ignora pulinhos nas costelas).
 @export_range(0.0, 2.0, 0.05, "suffix:s") var min_air_time: float = 0.25

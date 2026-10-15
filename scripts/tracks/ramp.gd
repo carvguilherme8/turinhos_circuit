@@ -32,6 +32,9 @@ extends StaticBody3D
 	set(value):
 		color = value
 		_rebuild()
+## Ondulação (costela): fica na camada de colisão 2. As rodas sempre a enxergam, mas o corpo
+## da moto atravessa a crista enquanto desliza empinada (ver Bike.skimming).
+@export var is_bump: bool = false
 ## Material opcional (ex.: terra pixelada com UV triplanar). Sem ele, usa `color`.
 @export var material: Material:
 	set(value):
@@ -65,6 +68,7 @@ var _collision: CollisionShape3D
 
 
 func _ready() -> void:
+	collision_layer = 2 if is_bump else 1
 	_mesh_instance = MeshInstance3D.new()
 	add_child(_mesh_instance)
 	_collision = CollisionShape3D.new()
