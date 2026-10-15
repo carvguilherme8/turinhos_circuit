@@ -76,7 +76,8 @@ def finish(c, p, face, amount=0.05):
     return shade(c, grain(p, amount) * mc_shade(face))
 
 
-DIGIT_8_BIG = [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."]
+# Largura par (4) para centralizar exato nas costas (8 de largura).
+DIGIT_8_BIG = [".##.", "#..#", "#..#", ".##.", "#..#", "#..#", ".##."]
 
 
 def glyph_hit(glyph, i, j):
@@ -204,7 +205,7 @@ def jersey(pal, cube, face, p, uv, w, h):
     elif face in ("east", "west"):
         c = pal.white if 1 <= i <= 2 else pal.primary_dark
     elif face == "south":
-        gi, gj = i - (w - 5) // 2, j - 2
+        gi, gj = i - (w - len(DIGIT_8_BIG[0])) // 2, j - 2
         if glyph_hit(DIGIT_8_BIG, gi, gj):
             c = pal.white
     elif face == "north":

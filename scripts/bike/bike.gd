@@ -41,6 +41,8 @@ const SAFE_POINT_MIN_AGE := 1.0
 @export var rider_lean_degrees: float = 12.0
 ## Câmera em cima do guidão (primeira pessoa).
 @export var first_person_camera: Camera3D
+## Poeira da roda traseira (a intensidade vem de velocidade, aceleração, derrapagem e pousos).
+@export var rear_dust: GPUParticles3D
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
@@ -82,6 +84,8 @@ var _rear_wheel_rest_y: float = 0.0
 var _fork_slider_rest: Vector3
 var _swingarm_length: float = 0.5
 var _rider_upper_rest_x: float = 0.0
+## Tempo restante da "explosão" de poeira (pouso, queda).
+var _dust_burst: float = 0.0
 var _visual_rest: Vector3
 var _visual_lean: float = 0.0
 ## Ângulo visual numa roda só (segue o pêndulo; no ar volta suave para zero).
@@ -155,6 +159,7 @@ func _physics_process(delta: float) -> void:
 		# Queda: sem controle nem equilíbrio, a física derruba a moto de verdade.
 		_crash_timer -= delta
 		_update_visuals(delta)
+		_update_dust(delta)
 		if _crash_timer <= 0.0:
 			respawn(SAFE_POINT_MIN_AGE)
 		return
@@ -190,6 +195,7 @@ func _physics_process(delta: float) -> void:
 		_apply_grip(forward, delta)
 	_steer_and_balance(forward, delta)
 	_update_visuals(delta)
+	_update_dust(delta)
 
 
 ## Conta o tempo no ar, avalia o pouso e detecta queda pela carenagem.
@@ -226,14 +232,17 @@ func _evaluate_landing() -> void:
 		var speed := linear_velocity.dot(forward)
 		var boost := minf(stats.perfect_landing_boost, maxf(stats.max_speed * 1.1 - speed, 0.0))
 		linear_velocity += forward * boost
+		_dust_burst = 0.3
 		landed.emit(Landing.PERFECT, angle)
 	else:
 		var t := inverse_lerp(stats.good_landing_angle, stats.crash_landing_angle, angle)
 		linear_velocity *= lerpf(stats.rough_landing_keep_best, stats.rough_landing_keep_worst, t)
+		_dust_burst = 0.45
 		landed.emit(Landing.ROUGH, angle)
 
 
 func _crash() -> void:
+	_dust_burst = 0.5
 	if not is_zero_approx(_visual_pitch):
 		global_transform = global_transform * _one_wheel_transform(_visual_pitch, _visual_rest)
 		_visual_pitch = 0.0
@@ -508,3 +517,23 @@ func _update_visuals(delta: float) -> void:
 	var spin := -forward_speed / stats.wheel_radius * delta
 	front_wheel.rotate_x(spin)
 	rear_wheel.rotate_x(spin)
+
+
+## Poeira da roda traseira: um pouco com velocidade, mais ao arrancar (roda girando em falso),
+## frear forte, derrapar ou empinar; explosão curta nos pousos e quedas.
+func _update_dust(delta: float) -> void:
+	if rear_dust == null:
+		return
+	_dust_burst = maxf(_dust_burst - delta, 0.0)
+	var target := 0.0
+	if rear_grounded and not is_crashed:
+		var speed_ratio := clampf(absf(forward_speed) / stats.max_speed, 0.0, 1.0)
+		target = speed_ratio * 0.3
+		target += _throttle * (1.0 - speed_ratio) * 0.6
+		target += _brake * speed_ratio * 0.5
+		target += drift_amount
+		if _one_wheel_angle > 0.05:
+			target += 0.3
+	if _dust_burst > 0.0:
+		target = 1.0
+	rear_dust.amount_ratio = move_toward(rear_dust.amount_ratio, clampf(target, 0.0, 1.0), 5.0 * delta)

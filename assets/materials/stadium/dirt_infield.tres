@@ -1,10 +1,14 @@
-[gd_resource type="StandardMaterial3D" load_steps=2 format=3]
+[gd_resource type="ShaderMaterial" load_steps=4 format=3]
 
-[ext_resource type="Texture2D" path="res://assets/textures/stadium/dirt_infield.png" id="1_tex"]
+[ext_resource type="Shader" path="res://assets/materials/stadium/pixel_dirt.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/textures/stadium/dirt_infield.png" id="2_detail"]
+[ext_resource type="Texture2D" path="res://assets/textures/stadium/dirt_macro.png" id="3_macro"]
 
 [resource]
-albedo_texture = ExtResource("1_tex")
-roughness = 1.0
-texture_filter = 4
-uv1_triplanar = true
-uv1_world_triplanar = true
+shader = ExtResource("1_shader")
+shader_parameter/detail = ExtResource("2_detail")
+shader_parameter/macro = ExtResource("3_macro")
+shader_parameter/detail_meters = 4.0
+shader_parameter/macro_meters = 28.0
+shader_parameter/macro_strength = 0.3
+shader_parameter/use_ruts = false

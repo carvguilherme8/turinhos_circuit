@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -8,6 +8,9 @@
 [ext_resource type="Script" path="res://scripts/tracks/stadium_track.gd" id="track"]
 [ext_resource type="Script" path="res://scripts/tracks/stadium.gd" id="stadium"]
 [ext_resource type="Material" path="res://assets/materials/stadium/dirt_track.tres" id="dirt_track"]
+[ext_resource type="Material" path="res://assets/materials/stadium/track_surface.tres" id="track_surface"]
+[ext_resource type="Material" path="res://assets/materials/stadium/stairs.tres" id="stairs"]
+[ext_resource type="Material" path="res://assets/materials/stadium/seats.tres" id="seats"]
 [ext_resource type="Material" path="res://assets/materials/stadium/dirt_infield.tres" id="dirt_infield"]
 [ext_resource type="Material" path="res://assets/materials/stadium/tuff_block.tres" id="tuff_block"]
 [ext_resource type="Material" path="res://assets/materials/stadium/concrete.tres" id="concrete"]
@@ -53,7 +56,7 @@ directional_shadow_max_distance = 140.0
 
 [node name="Track" type="Node3D" parent="."]
 script = ExtResource("track")
-track_material = ExtResource("dirt_track")
+track_material = ExtResource("track_surface")
 infield_material = ExtResource("dirt_infield")
 block_material = ExtResource("tuff_block")
 finish_material = ExtResource("checker")
@@ -69,6 +72,8 @@ metal_material = ExtResource("metal")
 light_material = ExtResource("light_panel")
 screen_material = ExtResource("jumbotron")
 outside_material = ExtResource("concrete")
+stairs_material = ExtResource("stairs")
+seats_material = ExtResource("seats")
 
 [node name="Ramps" type="Node3D" parent="."]
 

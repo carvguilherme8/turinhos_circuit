@@ -196,15 +196,22 @@ func _build_track_surface() -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n := centerline.size()
 	var half := track_width * 0.5
+	var distance := 0.0
 	for i in n:
 		var j := (i + 1) % n
+		var segment := centerline[i].distance_to(centerline[j])
 		var ri := _right(_tangent(centerline, i)) * half
 		var rj := _right(_tangent(centerline, j)) * half
 		var quad := [centerline[i] - ri, centerline[i] + ri, centerline[j] + rj, centerline[j] - rj]
+		# UV para o shader: x = distância lateral até a linha central, y = distância percorrida.
+		var uvs := [Vector2(-half, distance), Vector2(half, distance),
+				Vector2(half, distance + segment), Vector2(-half, distance + segment)]
+		distance += segment
 		# Ordem horária vista de cima (frente no Godot).
 		for k in [0, 2, 1, 0, 3, 2]:
 			var p: Vector2 = quad[k]
 			st.set_normal(Vector3.UP)
+			st.set_uv(uvs[k])
 			st.add_vertex(Vector3(p.x, 0.02, p.y))
 	st.set_material(track_material)
 	var mesh := MeshInstance3D.new()
