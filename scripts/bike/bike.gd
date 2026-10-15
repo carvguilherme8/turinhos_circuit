@@ -4,6 +4,20 @@ extends RigidBody3D
 ## e peso do piloto (wheelie, levantar a traseira, giro e whip no ar).
 ## A frente da moto é -Z (padrão do Godot).
 
+## Emitido ao pousar de um salto (não emitido em queda).
+signal landed(quality: Landing, angle: float)
+## Emitido quando a moto cai; ela volta para a pista após stats.respawn_delay.
+signal crashed
+signal respawned
+
+enum Landing { PERFECT, ROUGH }
+
+## Pontos seguros guardados para reposicionar (mais antigos são descartados).
+const SAFE_POINT_INTERVAL := 0.5
+const SAFE_POINT_COUNT := 12
+## Na queda, volta para um ponto seguro de pelo menos este tempo antes.
+const SAFE_POINT_MIN_AGE := 1.0
+
 @export var stats: BikeStats
 
 @export_group("Visual")
@@ -29,6 +43,15 @@ var rear_grounded: bool = false
 var drift_amount: float = 0.0
 ## Ângulo (graus) entre para onde a moto aponta e para onde ela está indo.
 var drift_angle: float = 0.0
+## Tempo no ar do salto atual (0 no chão).
+var air_time: float = 0.0
+var is_crashed: bool = false
+
+var _crash_timer: float = 0.0
+var _clock: float = 0.0
+var _next_safe_point_time: float = 0.0
+## Cada item: {"time": float, "position": Vector3, "heading": Vector3}
+var _safe_points: Array[Dictionary] = []
 
 var _steer: float = 0.0
 var _throttle: float = 0.0
@@ -60,6 +83,9 @@ func _ready() -> void:
 	gravity_scale = stats.gravity_scale
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = stats.center_of_mass
+	# Necessário para saber quando a carenagem bate em algo (detecção de queda).
+	contact_monitor = true
+	max_contacts_reported = 4
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
 	_front_ray.target_position = Vector3(0.0, -ray_length, 0.0)
 	_rear_ray.target_position = Vector3(0.0, -ray_length, 0.0)
@@ -78,21 +104,49 @@ func is_grounded() -> bool:
 	return front_grounded or rear_grounded
 
 
-func reset_to_spawn() -> void:
-	global_transform = _spawn_transform
+## Volta para o último ponto seguro (ou para o início, se não houver nenhum).
+## min_age > 0 ignora pontos guardados há menos que isso (usado na queda).
+func respawn(min_age: float = 0.0) -> void:
+	var target := _spawn_transform
+	for i in range(_safe_points.size() - 1, -1, -1):
+		var point: Dictionary = _safe_points[i]
+		if _clock - float(point["time"]) >= min_age:
+			var heading: Vector3 = point["heading"]
+			var basis := Basis.looking_at(heading, Vector3.UP)
+			target = Transform3D(basis, point["position"] + Vector3.UP * 0.3)
+			break
+	global_transform = target
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	_steer = 0.0
+	drift_amount = 0.0
+	air_time = 0.0
+	is_crashed = false
+	respawned.emit()
 
 
 func _physics_process(delta: float) -> void:
-	if Input.is_action_just_pressed("resetar_moto"):
-		reset_to_spawn()
-		return
-
+	_clock += delta
 	front_grounded = _apply_suspension(_front_ray, true)
 	rear_grounded = _apply_suspension(_rear_ray, false)
 	_ground_normal = _average_ground_normal()
+
+	if is_crashed:
+		# Queda: sem controle nem equilíbrio, a física derruba a moto de verdade.
+		_crash_timer -= delta
+		_update_visuals(delta)
+		if _crash_timer <= 0.0:
+			respawn(SAFE_POINT_MIN_AGE)
+		return
+
+	if Input.is_action_just_pressed("resetar_moto"):
+		respawn()
+		return
+
+	_track_air_and_landing(delta)
+	if is_crashed:
+		return
+	_record_safe_point()
 
 	var throttle := Input.get_action_strength("acelerar")
 	var brake := Input.get_action_strength("frear")
@@ -115,6 +169,66 @@ func _physics_process(delta: float) -> void:
 		_apply_grip(forward, delta)
 	_steer_and_balance(forward, delta)
 	_update_visuals(delta)
+
+
+## Conta o tempo no ar, avalia o pouso e detecta queda pela carenagem.
+func _track_air_and_landing(delta: float) -> void:
+	if not is_grounded():
+		air_time += delta
+	elif air_time > 0.0:
+		if air_time >= stats.min_air_time:
+			_evaluate_landing()
+		air_time = 0.0
+
+	if not is_crashed and get_contact_count() > 0:
+		var tilt := rad_to_deg(global_basis.y.angle_to(Vector3.UP))
+		if tilt > stats.crash_tilt_angle:
+			_crash()
+
+
+## Compara o "para cima" da moto com a normal do chão onde ela tocou:
+## pousar inclinado junto com a rampa de descida conta como alinhado.
+func _evaluate_landing() -> void:
+	var angle := rad_to_deg(global_basis.y.angle_to(_ground_normal))
+	if angle > stats.crash_landing_angle or global_basis.y.dot(Vector3.UP) < 0.0:
+		_crash()
+		return
+
+	if angle <= stats.good_landing_angle:
+		var forward := _flat_on_ground(-global_basis.z)
+		var speed := linear_velocity.dot(forward)
+		var boost := minf(stats.perfect_landing_boost, maxf(stats.max_speed * 1.1 - speed, 0.0))
+		linear_velocity += forward * boost
+		landed.emit(Landing.PERFECT, angle)
+	else:
+		var t := inverse_lerp(stats.good_landing_angle, stats.crash_landing_angle, angle)
+		linear_velocity *= lerpf(stats.rough_landing_keep_best, stats.rough_landing_keep_worst, t)
+		landed.emit(Landing.ROUGH, angle)
+
+
+func _crash() -> void:
+	is_crashed = true
+	_crash_timer = stats.respawn_delay
+	drift_amount = 0.0
+	crashed.emit()
+
+
+## Guarda de tempos em tempos onde a moto estava bem (nas duas rodas, em pé, em chão quase plano).
+func _record_safe_point() -> void:
+	if _clock < _next_safe_point_time:
+		return
+	if not (front_grounded and rear_grounded) or _ground_normal.y < 0.95:
+		return
+	if global_basis.y.angle_to(_ground_normal) > deg_to_rad(10.0):
+		return
+	var heading := -global_basis.z
+	heading.y = 0.0
+	if heading.length_squared() < 0.01:
+		return
+	_next_safe_point_time = _clock + SAFE_POINT_INTERVAL
+	_safe_points.append({"time": _clock, "position": global_position, "heading": heading.normalized()})
+	if _safe_points.size() > SAFE_POINT_COUNT:
+		_safe_points.pop_front()
 
 
 ## Mola + amortecedor numa roda. Retorna true se a roda está tocando o chão.
@@ -261,10 +375,16 @@ func _rider_weight_ground(av: Vector3, delta: float) -> Vector3:
 ## Sem comando, a moto mantém o giro que trouxe da rampa e alinha a frente com o salto.
 func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	var pitch_axis := global_basis.x
+	var rate := av.dot(pitch_axis)
 	if absf(_rider_pitch) > 0.05:
-		var rate := av.dot(pitch_axis)
 		var target_rate := _rider_pitch * stats.air_pitch_rate
 		av += pitch_axis * (target_rate - rate) * clampf(stats.air_pitch_response * delta, 0.0, 1.0)
+	elif stats.air_pitch_assist > 0.0 and linear_velocity.length() > 3.0:
+		# Assistente: o nariz segue a trajetória, como um dardo.
+		var velocity := linear_velocity - pitch_axis * linear_velocity.dot(pitch_axis)
+		var error := (-global_basis.z).signed_angle_to(velocity, pitch_axis)
+		var target_rate := error * stats.air_pitch_assist
+		av += pitch_axis * (target_rate - rate) * clampf(2.0 * delta, 0.0, 1.0)
 
 	var velocity_flat := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
 	var forward_flat := Vector3(-global_basis.z.x, 0.0, -global_basis.z.z)

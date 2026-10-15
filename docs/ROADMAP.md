@@ -11,14 +11,16 @@ Cada marco termina com algo **jogável** que dá para testar no Godot (F5). Não
 
 ## Marco 1 — A moto anda (protótipo de física)
 **Objetivo:** dirigir uma caixa num terreno com rampas e achar a física divertida.
-- [ ] Cena `scenes/bike/bike.tscn` com `RigidBody3D` + 2 raycasts de suspensão
-- [ ] Aceleração, freio e direção
-- [ ] Torque de equilíbrio (moto não tomba)
-- [ ] Inclinação no ar e detecção de pouso (bom / ruim / queda)
-- [ ] Reposicionar moto (tecla R)
-- [ ] Recurso `BikeStats` com parâmetros ajustáveis
+- [x] Cena `scenes/bike/bike.tscn` com `RigidBody3D` + 2 raycasts de suspensão
+- [x] Aceleração, freio e direção
+- [x] Torque de equilíbrio (moto não tomba)
+- [x] Freio de mão com derrapagem e peso do piloto (wheelie, whip)
+- [x] Inclinação no ar e detecção de pouso (bom / ruim / queda)
+- [x] Reposicionar moto (tecla R)
+- [x] Recurso `BikeStats` com parâmetros ajustáveis
 - [ ] Câmera de perseguição suavizada
-- [ ] Cena de teste "playground" com rampas de vários tamanhos
+- [x] Modelo voxel da moto (Blockbench) com guidão e suspensão animados
+- [x] Cena de teste "playground" com rampas de vários tamanhos
 
 ## Marco 2 — Uma corrida de verdade
 **Objetivo:** completar 3 voltas numa pista com tempo.

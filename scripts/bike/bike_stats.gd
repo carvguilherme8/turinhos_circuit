@@ -63,10 +63,30 @@ extends Resource
 @export_range(0.5, 10.0, 0.1, "suffix:rad/s") var air_pitch_rate: float = 3.5
 ## Rapidez com que o giro no ar responde ao comando.
 @export_range(0.5, 20.0, 0.5) var air_pitch_response: float = 5.0
+## Assistente: no ar, sem comando, o nariz acompanha a trajetória (0 = desligado).
+@export_range(0.0, 10.0, 0.1) var air_pitch_assist: float = 1.0
 ## Whip: quanto a moto deita de lado no ar.
 @export_range(0.0, 80.0, 1.0, "suffix:°") var whip_roll_angle: float = 55.0
 ## Whip: quanto a traseira é jogada para o lado no ar.
 @export_range(0.0, 60.0, 1.0, "suffix:°") var whip_yaw_angle: float = 30.0
+
+@export_group("Pouso")
+## Tempo mínimo no ar para o pouso ser avaliado (ignora pulinhos nas costelas).
+@export_range(0.0, 2.0, 0.05, "suffix:s") var min_air_time: float = 0.25
+## Até este ângulo entre a moto e o chão, o pouso é perfeito.
+@export_range(0.0, 45.0, 1.0, "suffix:°") var good_landing_angle: float = 15.0
+## Acima deste ângulo, é queda.
+@export_range(10.0, 90.0, 1.0, "suffix:°") var crash_landing_angle: float = 45.0
+## Velocidade extra num pouso perfeito.
+@export_range(0.0, 10.0, 0.1, "suffix:m/s") var perfect_landing_boost: float = 1.5
+## Fração da velocidade que sobra num pouso torto, logo acima do ângulo bom...
+@export_range(0.0, 1.0, 0.05) var rough_landing_keep_best: float = 0.85
+## ...e logo abaixo do ângulo de queda.
+@export_range(0.0, 1.0, 0.05) var rough_landing_keep_worst: float = 0.4
+## A carenagem encostando em algo com a moto mais tombada que isso é queda.
+@export_range(10.0, 90.0, 1.0, "suffix:°") var crash_tilt_angle: float = 60.0
+## Tempo caído antes de voltar para a pista.
+@export_range(0.1, 5.0, 0.1, "suffix:s") var respawn_delay: float = 1.0
 
 @export_group("Suspensão")
 @export_range(0.1, 1.5, 0.01, "suffix:m") var suspension_rest_length: float = 0.45

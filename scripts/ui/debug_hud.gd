@@ -7,10 +7,12 @@ extends Label
 func _process(_delta: float) -> void:
 	if bike == null:
 		return
-	var state := "chão" if bike.is_grounded() else "AR"
-	if bike.drift_amount > 0.3:
+	var state := "chão" if bike.is_grounded() else "AR %.1fs" % bike.air_time
+	if bike.is_crashed:
+		state = "CAÍDA"
+	elif bike.drift_amount > 0.3:
 		state = "DERRAPANDO"
-	text = "Velocidade: %d km/h\nEstado: %s  (dianteira %s / traseira %s)\nÂngulo de derrapagem: %d°\n\nWASD pilotar, Espaço freio de mão, R reposicionar\nSetas = peso do piloto: ↓ empina, ↑ levanta a traseira, no ar giram; ←/→ whip no ar" % [
+	text = "Velocidade: %d km/h\nEstado: %s  (dianteira %s / traseira %s)\nÂngulo de derrapagem: %d°\n\nWASD pilotar, Espaço freio de mão, R volta ao último ponto seguro\nSetas = peso do piloto: ↓ empina, ↑ levanta a traseira, no ar giram; ←/→ whip no ar" % [
 		roundi(bike.forward_speed * 3.6),
 		state,
 		"ok" if bike.front_grounded else "-",
