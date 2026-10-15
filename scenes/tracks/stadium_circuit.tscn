@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -23,16 +23,15 @@
 [ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="hints"]
 [ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="switcher"]
 [ext_resource type="Script" path="res://scripts/tracks/track_wear.gd" id="wear"]
+[ext_resource type="Shader" path="res://assets/materials/stadium/pixel_sky.gdshader" id="sky_shader"]
+[ext_resource type="Script" path="res://scripts/tracks/voxel_clouds.gd" id="clouds"]
 
-[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
-sky_top_color = Color(0.16, 0.18, 0.42, 1)
-sky_horizon_color = Color(0.95, 0.55, 0.38, 1)
-ground_bottom_color = Color(0.12, 0.1, 0.14, 1)
-ground_horizon_color = Color(0.95, 0.55, 0.38, 1)
-sun_angle_max = 20.0
+[sub_resource type="ShaderMaterial" id="SkyMat"]
+shader = ExtResource("sky_shader")
 
 [sub_resource type="Sky" id="Sky"]
 sky_material = SubResource("SkyMat")
+process_mode = 2
 
 [sub_resource type="Environment" id="Env"]
 background_mode = 2
@@ -54,6 +53,9 @@ transform = Transform3D(0.5, 0.2676, -0.8236, 0, 0.9511, 0.309, 0.866, -0.1545, 
 light_color = Color(1, 0.74, 0.52, 1)
 shadow_enabled = true
 directional_shadow_max_distance = 140.0
+
+[node name="Clouds" type="Node3D" parent="."]
+script = ExtResource("clouds")
 
 [node name="Track" type="Node3D" parent="."]
 script = ExtResource("track")
