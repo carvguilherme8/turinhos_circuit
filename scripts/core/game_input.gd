@@ -9,11 +9,13 @@ const ACTIONS := {
 	"direita": [KEY_D, KEY_RIGHT],
 	"inclinar_frente": [KEY_I],
 	"inclinar_tras": [KEY_K],
+	"freio_mao": [KEY_SPACE],
 	"resetar_moto": [KEY_R],
 	"pausar": [KEY_ESCAPE],
 }
 
 const PAD_BUTTONS := {
+	"freio_mao": JOY_BUTTON_A,
 	"resetar_moto": JOY_BUTTON_Y,
 	"pausar": JOY_BUTTON_START,
 }

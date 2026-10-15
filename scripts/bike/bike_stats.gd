@@ -32,6 +32,18 @@ extends Resource
 ## Inclinação visual nas curvas (só o desenho; a física continua em pé).
 @export_range(0.0, 45.0, 1.0, "suffix:°") var visual_lean_degrees: float = 25.0
 
+@export_group("Freio de mão")
+## Fração da aderência lateral que sobra com o freio de mão puxado (menor = derrapa mais).
+@export_range(0.0, 1.0, 0.01) var handbrake_grip_factor: float = 0.12
+## Quanto o freio de mão segura a moto (a roda traseira travada arrastando na terra).
+@export_range(0.0, 30.0, 0.5, "suffix:m/s²") var handbrake_deceleration: float = 7.0
+## Multiplica a direção durante a derrapagem, para a traseira sair de lado.
+@export_range(1.0, 4.0, 0.05) var handbrake_steer_boost: float = 1.5
+## Rapidez com que a aderência volta ao soltar o freio de mão (menor = escorrega por mais tempo).
+@export_range(0.5, 20.0, 0.1) var drift_recovery: float = 2.5
+## Ângulo máximo de derrapagem: a direção não gira a moto além disso (evita rodar no lugar).
+@export_range(10.0, 90.0, 1.0, "suffix:°") var max_drift_angle: float = 50.0
+
 @export_group("Equilíbrio")
 ## Força com que a moto volta a ficar em pé no eixo de rolagem.
 @export_range(0.0, 30.0, 0.5) var roll_stiffness: float = 10.0
