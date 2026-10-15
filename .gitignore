@@ -1,0 +1,27 @@
+# Cache do Godot 4 (o editor regenera sozinho)
+.godot/
+
+# Arquivos .uid (Godot 4.4+) DEVEM ser versionados — não ignore.
+
+# Builds exportados
+builds/
+export/
+*.exe
+*.pck
+*.x86_64
+*.app
+
+# Configurações locais de exportação (podem conter senhas/caminhos)
+export_credentials.cfg
+
+# Arquivos de backup do Blender
+*.blend1
+*.blend2
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.tmp
