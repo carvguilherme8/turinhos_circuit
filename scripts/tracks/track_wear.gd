@@ -5,7 +5,8 @@ extends Node
 ## passada soma, então o trajeto mais usado fica cada vez mais marcado. Os materiais de terra
 ## (shader pixel_dirt) escurecem o chão de acordo com essa imagem.
 
-@export var bike: Bike
+## Motos que marcam o chão (o jogador e os bots).
+@export var bikes: Array[Bike] = []
 @export var arena_min: Vector2 = Vector2(-31, -54)
 @export var arena_max: Vector2 = Vector2(31, 64)
 ## 8 px/m = pixels de 12,5 cm, mais ou menos a largura de um pneu.
@@ -22,7 +23,8 @@ extends Node
 var _image: Image
 var _texture: ImageTexture
 var _size: Vector2i
-var _last_pixel := {"front": Vector2i(-1, -1), "rear": Vector2i(-1, -1)}
+## Último pixel de cada roda de cada moto: chave "<id da moto>:front"/"<id>:rear".
+var _last_pixel := {}
 var _dirty: bool = false
 var _upload_timer: float = 0.0
 
@@ -37,8 +39,8 @@ func _ready() -> void:
 		material.set_shader_parameter("wear_origin", arena_min)
 		material.set_shader_parameter("wear_size", meters)
 		material.set_shader_parameter("use_wear", true)
-	if bike:
-		bike.respawned.connect(_forget_last)
+	for bike in bikes:
+		bike.respawned.connect(_forget_last.bind(bike))
 
 
 func _exit_tree() -> void:
@@ -48,11 +50,11 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if bike == null:
-		return
-	var moving := absf(bike.forward_speed) > 0.8 or bike.skid > 0.2
-	_track_wheel("front", bike.front_grounded and moving and not bike.is_crashed, bike.front_contact, 0.0)
-	_track_wheel("rear", bike.rear_grounded and moving and not bike.is_crashed, bike.rear_contact, bike.skid)
+	for bike in bikes:
+		var moving := absf(bike.forward_speed) > 0.8 or bike.skid > 0.2
+		var id := str(bike.get_instance_id())
+		_track_wheel(id + ":front", bike.front_grounded and moving and not bike.is_crashed, bike.front_contact, 0.0)
+		_track_wheel(id + ":rear", bike.rear_grounded and moving and not bike.is_crashed, bike.rear_contact, bike.skid)
 
 	_upload_timer -= delta
 	if _dirty and _upload_timer <= 0.0:
@@ -66,7 +68,7 @@ func _track_wheel(key: String, grounded: bool, contact: Vector3, skid: float) ->
 		_last_pixel[key] = Vector2i(-1, -1)
 		return
 	var pixel := _to_pixel(contact)
-	var last: Vector2i = _last_pixel[key]
+	var last: Vector2i = _last_pixel.get(key, Vector2i(-1, -1))
 	_last_pixel[key] = pixel
 	if last.x < 0 or last == pixel:
 		return
@@ -120,6 +122,7 @@ func _line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 	return points
 
 
-func _forget_last() -> void:
-	_last_pixel["front"] = Vector2i(-1, -1)
-	_last_pixel["rear"] = Vector2i(-1, -1)
+func _forget_last(bike: Bike) -> void:
+	var id := str(bike.get_instance_id())
+	_last_pixel.erase(id + ":front")
+	_last_pixel.erase(id + ":rear")

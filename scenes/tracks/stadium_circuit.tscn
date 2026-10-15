@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3]
+[gd_scene load_steps=38 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -25,6 +25,15 @@
 [ext_resource type="Script" path="res://scripts/tracks/track_wear.gd" id="wear"]
 [ext_resource type="Shader" path="res://assets/materials/stadium/pixel_sky.gdshader" id="sky_shader"]
 [ext_resource type="Script" path="res://scripts/tracks/voxel_clouds.gd" id="clouds"]
+[ext_resource type="Script" path="res://scripts/race/bot_driver.gd" id="bot_driver"]
+[ext_resource type="Script" path="res://scripts/race/race_manager.gd" id="race_manager"]
+[ext_resource type="Script" path="res://scripts/ui/race_hud.gd" id="race_hud"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_3.png" id="tex_bike_3"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_3.png" id="tex_rider_3"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_5.png" id="tex_bike_5"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_5.png" id="tex_rider_5"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_7.png" id="tex_bike_7"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_7.png" id="tex_rider_7"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
@@ -263,6 +272,24 @@ material = ExtResource("dirt_track")
 [node name="Bike" parent="." instance=ExtResource("bike")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 46)
 
+[node name="Bot3" parent="." instance=ExtResource("bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 50)
+player_controlled = false
+bike_texture = ExtResource("tex_bike_3")
+rider_texture = ExtResource("tex_rider_3")
+
+[node name="Bot5" parent="." instance=ExtResource("bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 50)
+player_controlled = false
+bike_texture = ExtResource("tex_bike_5")
+rider_texture = ExtResource("tex_rider_5")
+
+[node name="Bot7" parent="." instance=ExtResource("bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 50)
+player_controlled = false
+bike_texture = ExtResource("tex_bike_7")
+rider_texture = ExtResource("tex_rider_7")
+
 [node name="ChaseCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 3, 52)
 current = true
@@ -314,7 +341,46 @@ script = ExtResource("switcher")
 bike = NodePath("../Bike")
 chase_camera = NodePath("../ChaseCamera")
 
-[node name="TrackWear" type="Node" parent="." node_paths=PackedStringArray("bike")]
+[node name="TrackWear" type="Node" parent="." node_paths=PackedStringArray("bikes")]
 script = ExtResource("wear")
-bike = NodePath("../Bike")
+bikes = [NodePath("../Bike"), NodePath("../Bot3"), NodePath("../Bot5"), NodePath("../Bot7")]
 materials = Array[ShaderMaterial]([ExtResource("track_surface"), ExtResource("dirt_track"), ExtResource("dirt_infield")])
+
+[node name="Bots" type="Node" parent="."]
+
+[node name="Driver3" type="Node" parent="Bots" node_paths=PackedStringArray("bike", "track")]
+script = ExtResource("bot_driver")
+bike = NodePath("../../Bot3")
+track = NodePath("../../Track")
+pace = 0.97
+line_offset = -1.3
+
+[node name="Driver5" type="Node" parent="Bots" node_paths=PackedStringArray("bike", "track")]
+script = ExtResource("bot_driver")
+bike = NodePath("../../Bot5")
+track = NodePath("../../Track")
+pace = 0.94
+line_offset = 1.3
+
+[node name="Driver7" type="Node" parent="Bots" node_paths=PackedStringArray("bike", "track")]
+script = ExtResource("bot_driver")
+bike = NodePath("../../Bot7")
+track = NodePath("../../Track")
+pace = 0.91
+line_offset = 0.0
+
+[node name="RaceManager" type="Node" parent="." node_paths=PackedStringArray("track", "player", "bikes")]
+script = ExtResource("race_manager")
+track = NodePath("../Track")
+player = NodePath("../Bike")
+bikes = [NodePath("../Bot3"), NodePath("../Bot5"), NodePath("../Bot7"), NodePath("../Bike")]
+names = PackedStringArray("Bot #3", "Bot #5", "Bot #7", "Você #8")
+
+[node name="RaceHud" type="Control" parent="HUD" node_paths=PackedStringArray("race")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("race_hud")
+race = NodePath("../../RaceManager")

@@ -71,8 +71,11 @@ extends Node3D
 		metal_material = value
 		_queue_rebuild()
 
-## Linha central amostrada (pontos a cada ~0,5 m, laço fechado). Útil para IA e checkpoints.
+## Linha central amostrada (pontos a cada ~0,5 m, laço fechado). Usada pelos bots e pela corrida.
 var centerline: PackedVector2Array = PackedVector2Array()
+## Distância percorrida até cada ponto da linha central, e o comprimento da volta.
+var distances: PackedFloat32Array = PackedFloat32Array()
+var length: float = 0.0
 
 var _generated: Node3D
 var _rebuild_queued: bool = false
@@ -101,6 +104,11 @@ func _rebuild() -> void:
 	centerline = _sample_centerline(0.5)
 	if centerline.size() < 3:
 		return
+	distances.resize(centerline.size())
+	length = 0.0
+	for i in centerline.size():
+		distances[i] = length
+		length += centerline[i].distance_to(centerline[(i + 1) % centerline.size()])
 	_build_arena_floor()
 	_build_track_surface()
 	_build_blocks()
@@ -333,3 +341,74 @@ func _index_at_distance(distance: float) -> int:
 		if travelled >= distance:
 			return i
 	return 0
+
+
+# ---------------------------------------------------------------- consultas (bots e corrida)
+
+## Ponto da linha central mais perto de `pos`. Com `hint` >= 0, procura só perto dele
+## (de `behind` pontos para trás até `ahead` para frente), o que evita "pular" para a reta
+## vizinha; se ficar longe demais, faz a busca completa.
+func closest_index(pos: Vector3, hint: int = -1, behind: int = 120, ahead: int = 120) -> int:
+	var p := Vector2(pos.x, pos.z)
+	var n := centerline.size()
+	var best := 0
+	var best_d := INF
+	if hint >= 0:
+		for k in range(-behind, ahead + 1):
+			var i := posmod(hint + k, n)
+			var d := p.distance_squared_to(centerline[i])
+			if d < best_d:
+				best_d = d
+				best = i
+		if best_d < 7.0 * 7.0:
+			return best
+	for i in n:
+		var d := p.distance_squared_to(centerline[i])
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+## Ponto mais perto só dentro da janela em volta de `hint` (sem busca completa).
+func closest_index_near(pos: Vector3, hint: int, behind: int, ahead: int) -> int:
+	var p := Vector2(pos.x, pos.z)
+	var n := centerline.size()
+	var best := posmod(hint, n)
+	var best_d := INF
+	for k in range(-behind, ahead + 1):
+		var i := posmod(hint + k, n)
+		var d := p.distance_squared_to(centerline[i])
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+## Distância ao longo da pista a partir da linha de chegada (0..length).
+func distance_from_finish(index: int) -> float:
+	return fposmod(distances[index] - distances[_index_at_distance(finish_distance)], length)
+
+
+func point_at(index: int) -> Vector2:
+	return centerline[posmod(index, centerline.size())]
+
+
+func tangent_at(index: int) -> Vector2:
+	return _tangent(centerline, posmod(index, centerline.size()))
+
+
+func right_at(index: int) -> Vector2:
+	return _right(tangent_at(index))
+
+
+func index_ahead(index: int, meters: float) -> int:
+	return index + int(meters / 0.5)
+
+
+## Posição e direção da linha de chegada (para montar o grid de largada).
+func finish_transform() -> Transform3D:
+	var i := _index_at_distance(finish_distance)
+	var p := centerline[i]
+	var t := _tangent(centerline, i)
+	return Transform3D(Basis.looking_at(Vector3(t.x, 0.0, t.y), Vector3.UP), Vector3(p.x, 0.0, p.y))

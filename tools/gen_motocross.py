@@ -111,14 +111,27 @@ def plastic_with_stripe(pal, cube, face, p, uv, w, h):
 
 
 # Dígito "8" em 3x5 (simétrico: lê certo mesmo espelhado no Blockbench/Minecraft).
-DIGIT_8 = ["###", "#.#", "###", "#.#", "###"]
+# Dígitos 3x5 das placas (o número vem de --number).
+DIGITS = {
+    "0": ["###", "#.#", "#.#", "#.#", "###"],
+    "1": [".#.", "##.", ".#.", ".#.", "###"],
+    "2": ["###", "..#", "###", "#..", "###"],
+    "3": ["###", "..#", "###", "..#", "###"],
+    "4": ["#.#", "#.#", "###", "..#", "..#"],
+    "5": ["###", "#..", "###", "..#", "###"],
+    "6": ["###", "#..", "###", "#.#", "###"],
+    "7": ["###", "..#", ".#.", ".#.", ".#."],
+    "8": ["###", "#.#", "###", "#.#", "###"],
+    "9": ["###", "#.#", "###", "..#", "###"],
+}
+PLATE_NUMBER = "8"
 
 
 def number_plate(pal, cube, face, p, uv, w, h):
     if face in ("north", "east", "west") and w >= 5 and h >= 6:
         i = math.floor(uv[0] * w - (w - 3) / 2)
         j = math.floor(uv[1] * h - (h - 5) / 2)
-        if 0 <= j < 5 and 0 <= i < 3 and DIGIT_8[j][i] == "#":
+        if 0 <= j < 5 and 0 <= i < 3 and DIGITS[PLATE_NUMBER][j][i] == "#":
             return shade(pal.seat, 1.0)
     c = pal.white if face in ("north", "east", "west") else pal.primary
     return shade(c, noise(p, 0.03) * edge_factor(uv, w, h))
@@ -612,8 +625,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--primary", default="e8572a", help="cor principal dos plásticos (hex)")
     ap.add_argument("--name", default="motocross")
+    ap.add_argument("--number", default="8", choices=list(DIGITS), help="número das placas")
+    ap.add_argument("--texture-only", action="store_true",
+                    help="gera só o .png (variação de cor do mesmo modelo, mesma UV)")
     ap.add_argument("--out", default=os.path.join(here, "..", "assets", "models", "bikes", "motocross"))
     args = ap.parse_args()
+    global PLATE_NUMBER
+    PLATE_NUMBER = args.number
 
     random.seed(7)
     pal = Palette(hex_color(args.primary))
@@ -621,8 +639,9 @@ def main():
     img = pack_and_paint(cubes, pal)
     os.makedirs(args.out, exist_ok=True)
     img.save(os.path.join(args.out, args.name + ".png"))
-    write_bbmodel(cubes, img, os.path.join(args.out, args.name + ".bbmodel"), args.name)
-    write_glb(cubes, img, os.path.join(args.out, args.name + ".glb"), args.name)
+    if not args.texture_only:
+        write_bbmodel(cubes, img, os.path.join(args.out, args.name + ".bbmodel"), args.name)
+        write_glb(cubes, img, os.path.join(args.out, args.name + ".glb"), args.name)
     print(f"{len(cubes)} cubos, textura {img.width}x{img.height} -> {os.path.normpath(args.out)}")
 
 

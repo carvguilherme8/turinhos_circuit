@@ -24,19 +24,23 @@ Cada marco termina com algo **jogável** que dá para testar no Godot (F5). Não
 
 ## Marco 2 — Uma corrida de verdade
 **Objetivo:** completar 3 voltas numa pista com tempo.
-- [ ] Primeira pista (modular ou `.glb`)
-- [ ] Checkpoints e contagem de voltas
-- [ ] Cronômetro, melhor volta
-- [ ] Contagem regressiva de largada
-- [ ] HUD básico
-- [ ] Respawn no último checkpoint ao cair ou sair da pista
+- [x] Primeira pista (estádio de supercross, gerada por script)
+- [x] Contagem de voltas (progresso ao longo da linha central da pista)
+- [x] Cronômetro (falta: melhor volta)
+- [x] Contagem regressiva de largada
+- [x] HUD básico (posição, volta, tempo)
+- [x] Recolocar na pista ao cair ou sair da faixa
+- [x] Reiniciar a corrida (Backspace)
 
 ## Marco 3 — Adversários
 **Objetivo:** correr contra 5 pilotos e ter uma posição final.
-- [ ] Linha de corrida (`Path3D`) na pista
-- [ ] IA seguindo o caminho, com velocidade adaptativa
-- [ ] Cálculo de posição em tempo real
-- [ ] Tela de resultado
+- [x] Linha de corrida (linha central da pista, com deslocamento por bot)
+- [x] IA seguindo o caminho, com velocidade adaptativa (freia antes das curvas)
+- [x] Cálculo de posição em tempo real
+- [x] Tela de resultado
+- [x] Cores e números diferentes por piloto
+- [ ] 5 adversários (hoje são 3) e rubber banding leve
+- [ ] Bots desviando uns dos outros
 
 ## Marco 4 — Visual e som
 **Objetivo:** parecer e soar como um jogo.

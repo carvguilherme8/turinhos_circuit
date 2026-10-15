@@ -16,6 +16,7 @@ const ACTIONS := {
 	"resetar_moto": [KEY_R],
 	"trocar_camera": [KEY_C],
 	"alternar_dicas": [KEY_H],
+	"reiniciar_corrida": [KEY_BACKSPACE],
 	"pausar": [KEY_ESCAPE],
 }
 
@@ -23,6 +24,7 @@ const PAD_BUTTONS := {
 	"freio_mao": JOY_BUTTON_A,
 	"trocar_camera": JOY_BUTTON_BACK,
 	"alternar_dicas": JOY_BUTTON_DPAD_UP,
+	"reiniciar_corrida": JOY_BUTTON_DPAD_DOWN,
 	"resetar_moto": JOY_BUTTON_Y,
 	"pausar": JOY_BUTTON_START,
 }

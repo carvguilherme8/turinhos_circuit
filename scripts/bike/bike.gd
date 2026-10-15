@@ -19,6 +19,11 @@ const SAFE_POINT_COUNT := 12
 const SAFE_POINT_MIN_AGE := 1.0
 
 @export var stats: BikeStats
+## true = pilotada pelo teclado/controle; false = por um bot (BotDriver preenche bot_*).
+@export var player_controlled: bool = true
+## Cores: texturas alternativas da moto e do piloto (mesma UV do modelo). Vazio = padrão.
+@export var bike_texture: Texture2D
+@export var rider_texture: Texture2D
 
 @export_group("Visual")
 ## Rodas: giram com a velocidade.
@@ -54,6 +59,12 @@ var drift_amount: float = 0.0
 var drift_angle: float = 0.0
 ## Tempo no ar do salto atual (0 no chão).
 var air_time: float = 0.0
+## false durante a contagem regressiva: a moto ignora acelerador, freio e direção.
+var controls_enabled: bool = true
+## Comandos do bot (0..1; direção -1..1).
+var bot_throttle: float = 0.0
+var bot_brake: float = 0.0
+var bot_steer: float = 0.0
 ## Onde cada roda toca o chão (válido quando a roda está no chão). Usado pelas marcas de pneu.
 var front_contact: Vector3 = Vector3.ZERO
 var rear_contact: Vector3 = Vector3.ZERO
@@ -123,6 +134,8 @@ func _ready() -> void:
 	_rear_wheel_y = _rear_wheel_rest_y
 	_fork_slider_rest = fork_slider.position
 	_visual_rest = _visual.position
+	_apply_skin($Visual/Model, bike_texture)
+	_apply_skin($Visual/Rider, rider_texture)
 	if rider_upper:
 		_rider_upper_rest_x = rider_upper.rotation.x
 	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
@@ -130,6 +143,28 @@ func _ready() -> void:
 
 func is_grounded() -> bool:
 	return front_grounded or rear_grounded
+
+
+## Define a posição de largada (e põe a moto nela, parada).
+func set_spawn(spawn: Transform3D) -> void:
+	_spawn_transform = spawn
+	global_transform = spawn
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	_safe_points.clear()
+
+
+## Recoloca a moto num ponto da pista (fora da pista, atalho). Esquece os pontos seguros,
+## que podem ter ficado do lado errado.
+func place_at(spot: Transform3D) -> void:
+	global_transform = spot
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	_safe_points.clear()
+	_steer = 0.0
+	drift_amount = 0.0
+	air_time = 0.0
+	respawned.emit()
 
 
 ## Volta para o último ponto seguro (ou para o início, se não houver nenhum).
@@ -169,7 +204,7 @@ func _physics_process(delta: float) -> void:
 			respawn(SAFE_POINT_MIN_AGE)
 		return
 
-	if Input.is_action_just_pressed("resetar_moto"):
+	if player_controlled and controls_enabled and Input.is_action_just_pressed("resetar_moto"):
 		respawn()
 		return
 
@@ -178,14 +213,25 @@ func _physics_process(delta: float) -> void:
 		return
 	_record_safe_point()
 
-	var throttle := Input.get_action_strength("acelerar")
-	var brake := Input.get_action_strength("frear")
-	var steer_input := Input.get_axis("esquerda", "direita")
-	var handbrake := Input.is_action_pressed("freio_mao") and is_grounded()
+	var throttle := 0.0
+	var brake := 0.0
+	var steer_input := 0.0
+	var handbrake := false
+	_rider_pitch = 0.0
+	_rider_side = 0.0
+	if controls_enabled and player_controlled:
+		throttle = Input.get_action_strength("acelerar")
+		brake = Input.get_action_strength("frear")
+		steer_input = Input.get_axis("esquerda", "direita")
+		handbrake = Input.is_action_pressed("freio_mao") and is_grounded()
+		_rider_pitch = Input.get_axis("inclinar_frente", "inclinar_tras")
+		_rider_side = Input.get_axis("inclinar_esquerda", "inclinar_direita")
+	elif controls_enabled:
+		throttle = bot_throttle
+		brake = bot_brake
+		steer_input = bot_steer
 	_throttle = throttle
 	_brake = brake
-	_rider_pitch = Input.get_axis("inclinar_frente", "inclinar_tras")
-	_rider_side = Input.get_axis("inclinar_esquerda", "inclinar_direita")
 	var drift_rate := 10.0 if handbrake else stats.drift_recovery
 	drift_amount = move_toward(drift_amount, 1.0 if handbrake else 0.0, drift_rate * delta)
 	_steer = move_toward(_steer, steer_input, stats.steer_response * delta)
@@ -556,3 +602,15 @@ func _update_dust(delta: float) -> void:
 	if _dust_burst > 0.0:
 		target = 1.0
 	rear_dust.amount_ratio = move_toward(rear_dust.amount_ratio, clampf(target, 0.0, 1.0), 5.0 * delta)
+
+
+## Troca a textura de todas as malhas de um modelo (variação de cor com a mesma UV).
+func _apply_skin(model: Node, texture: Texture2D) -> void:
+	if texture == null or model == null:
+		return
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = texture
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.roughness = 0.9
+	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).material_override = material

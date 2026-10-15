@@ -76,8 +76,20 @@ def finish(c, p, face, amount=0.05):
     return shade(c, grain(p, amount) * mc_shade(face))
 
 
-# Largura par (4) para centralizar exato nas costas (8 de largura).
-DIGIT_8_BIG = [".##.", "#..#", "#..#", ".##.", "#..#", "#..#", ".##."]
+# Dígitos 4x7 das costas (largura par para centralizar exato no tronco de 8).
+DIGITS_BIG = {
+    "0": [".##.", "#..#", "#..#", "#..#", "#..#", "#..#", ".##."],
+    "1": ["..#.", ".##.", "..#.", "..#.", "..#.", "..#.", ".###"],
+    "2": [".##.", "#..#", "...#", "..#.", ".#..", "#...", "####"],
+    "3": [".##.", "#..#", "...#", "..#.", "...#", "#..#", ".##."],
+    "4": ["#..#", "#..#", "#..#", "####", "...#", "...#", "...#"],
+    "5": ["####", "#...", "###.", "...#", "...#", "#..#", ".##."],
+    "6": [".##.", "#...", "###.", "#..#", "#..#", "#..#", ".##."],
+    "7": ["####", "...#", "..#.", "..#.", ".#..", ".#..", ".#.."],
+    "8": [".##.", "#..#", "#..#", ".##.", "#..#", "#..#", ".##."],
+    "9": [".##.", "#..#", "#..#", ".###", "...#", "...#", ".##."],
+}
+BACK_NUMBER = "8"
 
 
 def glyph_hit(glyph, i, j):
@@ -205,8 +217,9 @@ def jersey(pal, cube, face, p, uv, w, h):
     elif face in ("east", "west"):
         c = pal.white if 1 <= i <= 2 else pal.primary_dark
     elif face == "south":
-        gi, gj = i - (w - len(DIGIT_8_BIG[0])) // 2, j - 2
-        if glyph_hit(DIGIT_8_BIG, gi, gj):
+        glyph = DIGITS_BIG[BACK_NUMBER]
+        gi, gj = i - (w - len(glyph[0])) // 2, j - 2
+        if glyph_hit(glyph, gi, gj):
             c = pal.white
     elif face == "north":
         if 17.0 < y < 19.0:
@@ -310,8 +323,13 @@ def main():
     ap.add_argument("--primary", default="2a5ce8", help="cor principal da roupa e do capacete (hex)")
     ap.add_argument("--accent", default="f0d23c", help="cor de detalhe (hex)")
     ap.add_argument("--name", default="rider")
+    ap.add_argument("--number", default="8", choices=list(DIGITS_BIG), help="número nas costas")
+    ap.add_argument("--texture-only", action="store_true",
+                    help="gera só o .png (variação de cor do mesmo modelo, mesma UV)")
     ap.add_argument("--out", default=os.path.join(here, "..", "assets", "models", "riders", "rider"))
     args = ap.parse_args()
+    global BACK_NUMBER
+    BACK_NUMBER = args.number
 
     random.seed(11)
     pal = Palette(hex_color(args.primary), hex_color(args.accent))
@@ -319,8 +337,9 @@ def main():
     img = gm.pack_and_paint(cubes, pal)
     os.makedirs(args.out, exist_ok=True)
     img.save(os.path.join(args.out, args.name + ".png"))
-    gm.write_bbmodel(cubes, img, os.path.join(args.out, args.name + ".bbmodel"), args.name, GROUPS)
-    gm.write_glb(cubes, img, os.path.join(args.out, args.name + ".glb"), args.name, GROUPS)
+    if not args.texture_only:
+        gm.write_bbmodel(cubes, img, os.path.join(args.out, args.name + ".bbmodel"), args.name, GROUPS)
+        gm.write_glb(cubes, img, os.path.join(args.out, args.name + ".glb"), args.name, GROUPS)
     print(f"{len(cubes)} cubos, textura {img.width}x{img.height} -> {os.path.normpath(args.out)}")
     report_fit()
 
