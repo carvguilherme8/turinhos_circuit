@@ -77,6 +77,8 @@ extends Resource
 @export_range(0.5, 10.0, 0.1, "suffix:rad/s") var air_pitch_rate: float = 3.5
 ## Rapidez com que o giro no ar responde ao comando.
 @export_range(0.5, 20.0, 0.5) var air_pitch_response: float = 5.0
+## Assistente: numa roda só (cristas, costelas), sem comando, alinha a moto com o chão.
+@export_range(0.0, 10.0, 0.1) var one_wheel_pitch_assist: float = 3.0
 ## Assistente: no ar, sem comando, o nariz acompanha a trajetória (0 = desligado).
 @export_range(0.0, 10.0, 0.1) var air_pitch_assist: float = 1.0
 ## Whip: quanto a moto deita de lado no ar.

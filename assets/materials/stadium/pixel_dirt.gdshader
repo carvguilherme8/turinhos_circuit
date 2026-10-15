@@ -2,7 +2,8 @@ shader_type spatial;
 // Terra pixel art com variedade:
 // - textura de detalhe projetada pelo eixo dominante da superfície (pixels nítidos, sem mistura);
 // - manchas grandes e suaves (dois tamanhos), quantizadas em degraus para combinar com o pixel art;
-// - opcional (faixa da pista): sulcos de pneu ondulados e terra solta nas bordas.
+// - opcional (faixa da pista): sulcos de pneu ondulados e terra solta nas bordas;
+// - opcional: marcas de pneu deixadas pela moto, que se acumulam a cada passada.
 //   Na pista, UV.x = distância lateral até a linha central (m) e UV.y = distância percorrida (m).
 
 uniform sampler2D detail : source_color, filter_nearest_mipmap_anisotropic, repeat_enable;
@@ -13,6 +14,12 @@ uniform float macro_strength = 0.22;
 uniform bool use_ruts = false;
 uniform float track_half_width = 4.5;
 uniform float rut_darkness = 0.3;
+// Marcas de pneu dinâmicas (preenchidas pelo TrackWear em tempo de jogo).
+uniform sampler2D wear : filter_nearest, repeat_disable;
+uniform bool use_wear = false;
+uniform vec2 wear_origin = vec2(0.0);
+uniform vec2 wear_size = vec2(1.0);
+uniform float wear_darkness = 0.5;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -58,6 +65,16 @@ void fragment() {
 		// Terra solta (mais clara) perto das bordas.
 		float edge = clamp((abs(u) - (track_half_width - 1.0)) / 1.0, 0.0, 1.0);
 		albedo *= 1.0 + 0.12 * floor(edge * 3.0) / 3.0;
+	}
+
+	if (use_wear && world_normal.y > 0.5) {
+		vec2 wear_uv = (world_pos.xz - wear_origin) / wear_size;
+		if (all(greaterThanEqual(wear_uv, vec2(0.0))) && all(lessThanEqual(wear_uv, vec2(1.0)))) {
+			// Em degraus, para a marca combinar com o pixel art.
+			float w = floor(texture(wear, wear_uv).r * 4.0) / 4.0;
+			// Terra compactada: mais escura e um pouco mais fria.
+			albedo *= mix(vec3(1.0), vec3(0.58, 0.52, 0.48), w * wear_darkness * 2.0);
+		}
 	}
 
 	ALBEDO = albedo;

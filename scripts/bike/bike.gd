@@ -54,6 +54,11 @@ var drift_amount: float = 0.0
 var drift_angle: float = 0.0
 ## Tempo no ar do salto atual (0 no chão).
 var air_time: float = 0.0
+## Onde cada roda toca o chão (válido quando a roda está no chão). Usado pelas marcas de pneu.
+var front_contact: Vector3 = Vector3.ZERO
+var rear_contact: Vector3 = Vector3.ZERO
+## 0..1: quanto o pneu traseiro está arrastando (derrapagem ou freada forte).
+var skid: float = 0.0
 var is_crashed: bool = false
 
 var _crash_timer: float = 0.0
@@ -282,7 +287,12 @@ func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 		return false
 
 	var origin := ray.global_position
-	var distance := origin.distance_to(ray.get_collision_point())
+	var hit := ray.get_collision_point()
+	if is_front:
+		front_contact = hit
+	else:
+		rear_contact = hit
+	var distance := origin.distance_to(hit)
 	var compression := ray_length - distance
 	var com := global_transform * center_of_mass
 	var point_velocity := linear_velocity + angular_velocity.cross(origin - com)
@@ -425,6 +435,13 @@ func _rider_weight_ground(av: Vector3, delta: float) -> Vector3:
 			or (previous < 0.0 and _one_wheel_angle >= 0.0 and _rider_pitch < 0.05):
 		_reset_one_wheel()
 
+	# Assistente: apoiada numa roda só (saindo de uma crista, por exemplo) e sem comando,
+	# a moto alinha devagar com o chão em vez de mergulhar de nariz.
+	if front_grounded != rear_grounded and absf(_rider_pitch) < 0.05 and stats.one_wheel_pitch_assist > 0.0:
+		var pitch_axis := global_basis.x
+		var pitch := deg_to_rad(_ground_pitch_degrees())
+		var target_rate := -pitch * stats.one_wheel_pitch_assist
+		av += pitch_axis * (target_rate - av.dot(pitch_axis)) * clampf(4.0 * delta, 0.0, 1.0)
 	return av
 
 
@@ -522,6 +539,8 @@ func _update_visuals(delta: float) -> void:
 ## Poeira da roda traseira: um pouco com velocidade, mais ao arrancar (roda girando em falso),
 ## frear forte, derrapar ou empinar; explosão curta nos pousos e quedas.
 func _update_dust(delta: float) -> void:
+	var speed_ratio_skid := clampf(absf(forward_speed) / stats.max_speed, 0.0, 1.0)
+	skid = clampf(maxf(drift_amount, _brake * speed_ratio_skid * 1.5), 0.0, 1.0)
 	if rear_dust == null:
 		return
 	_dust_burst = maxf(_dust_burst - delta, 0.0)

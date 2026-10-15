@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -22,6 +22,7 @@
 [ext_resource type="Material" path="res://assets/materials/stadium/light_panel.tres" id="light_panel"]
 [ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="hints"]
 [ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="switcher"]
+[ext_resource type="Script" path="res://scripts/tracks/track_wear.gd" id="wear"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.16, 0.18, 0.42, 1)
@@ -310,3 +311,8 @@ script = ExtResource("hints")
 script = ExtResource("switcher")
 bike = NodePath("../Bike")
 chase_camera = NodePath("../ChaseCamera")
+
+[node name="TrackWear" type="Node" parent="." node_paths=PackedStringArray("bike")]
+script = ExtResource("wear")
+bike = NodePath("../Bike")
+materials = Array[ShaderMaterial]([ExtResource("track_surface"), ExtResource("dirt_track"), ExtResource("dirt_infield")])
