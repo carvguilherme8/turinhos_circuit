@@ -54,6 +54,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.69, 0)
 [node name="Model" parent="Visual" instance=ExtResource("3_model")]
 
 [node name="Rider" parent="Visual" instance=ExtResource("4_rider")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0.425, 0.2375)
 
 [node name="FirstPersonCamera" type="Camera3D" parent="Visual"]
 transform = Transform3D(1, 0, 0, 0, 0.970296, 0.241922, 0, -0.241922, 0.970296, 0, 1.62, 0.02)

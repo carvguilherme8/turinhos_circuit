@@ -81,6 +81,7 @@ var _front_wheel_rest_y: float = 0.0
 var _rear_wheel_rest_y: float = 0.0
 var _fork_slider_rest: Vector3
 var _swingarm_length: float = 0.5
+var _rider_upper_rest_x: float = 0.0
 var _visual_rest: Vector3
 var _visual_lean: float = 0.0
 ## Ângulo visual numa roda só (segue o pêndulo; no ar volta suave para zero).
@@ -113,6 +114,8 @@ func _ready() -> void:
 	_rear_wheel_y = _rear_wheel_rest_y
 	_fork_slider_rest = fork_slider.position
 	_visual_rest = _visual.position
+	if rider_upper:
+		_rider_upper_rest_x = rider_upper.rotation.x
 	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
 
 
@@ -498,7 +501,8 @@ func _update_visuals(delta: float) -> void:
 	swingarm.rotation.x = -asin(clampf(rear_travel / _swingarm_length, -0.9, 0.9))
 
 	if rider_upper:
-		var lean_back := _rider_pitch * deg_to_rad(rider_lean_degrees)
+		# Inclina a partir da pose do modelo (o tronco já vem inclinado para frente).
+		var lean_back := _rider_upper_rest_x + _rider_pitch * deg_to_rad(rider_lean_degrees)
 		rider_upper.rotation.x = lerp_angle(rider_upper.rotation.x, lean_back, clampf(10.0 * delta, 0.0, 1.0))
 
 	var spin := -forward_speed / stats.wheel_radius * delta

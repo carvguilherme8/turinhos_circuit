@@ -4,8 +4,8 @@ extends Camera3D
 
 @export var target: Node3D
 @export var distance: float = 6.0
-@export var height: float = 2.5
-@export var look_height: float = 1.0
+@export var height: float = 3.0
+@export var look_height: float = 1.4
 ## Quanto maior, mais "colada" a câmera fica no alvo.
 @export var follow_speed: float = 6.0
 

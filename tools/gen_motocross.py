@@ -383,7 +383,7 @@ def pack_and_paint(cubes, pal):
 # ---------------------------------------------------------------- Blockbench
 
 GROUPS = [
-    # (nome, pivô, pai)
+    # (nome, pivô, pai[, rotação em graus (x, y, z)])
     # fork: tudo que gira com o guidão, pivô sobre o eixo de direção inclinado
     # fork_lower: bengalas que deslizam ao longo do garfo com a suspensão
     # swingarm: balança traseira, gira no pivô para acompanhar a roda
@@ -431,9 +431,12 @@ def write_bbmodel(cubes, img, path, name, groups=None):
     def group_node(gname):
         g = next(g for g in groups if g[0] == gname)
         children = [group_node(o[0]) for o in groups if o[2] == gname] + by_group[gname]
-        return {"name": gname, "origin": list(g[1]), "color": 0, "uuid": new_uuid(),
+        node = {"name": gname, "origin": list(g[1]), "color": 0, "uuid": new_uuid(),
                 "export": True, "mirror_uv": False, "isOpen": True, "locked": False,
                 "visibility": True, "autouv": 0, "children": children}
+        if len(g) > 3 and any(g[3]):
+            node["rotation"] = list(g[3])
+        return node
 
     model = {
         "meta": {"format_version": "4.10", "model_format": "bedrock", "box_uv": False},
@@ -480,6 +483,25 @@ NORMALS = {"north": (0, 0, -1), "south": (0, 0, 1), "east": (1, 0, 0),
            "west": (-1, 0, 0), "up": (0, 1, 0), "down": (0, -1, 0)}
 
 
+def quat_mul(a, b):
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (aw * bx + ax * bw + ay * bz - az * by,
+            aw * by - ax * bz + ay * bw + az * bx,
+            aw * bz + ax * by - ay * bx + az * bw,
+            aw * bw - ax * bx - ay * by - az * bz)
+
+
+def euler_to_quat(degrees):
+    """Rotação de grupo do Blockbench (graus, ordem ZYX: aplica X, depois Y, depois Z)."""
+    qs = []
+    for axis, deg in zip(((1, 0, 0), (0, 1, 0), (0, 0, 1)), degrees):
+        h = math.radians(deg) * 0.5
+        qs.append((axis[0] * math.sin(h), axis[1] * math.sin(h), axis[2] * math.sin(h), math.cos(h)))
+    qx, qy, qz = qs
+    return quat_mul(qz, quat_mul(qy, qx))
+
+
 def write_glb(cubes, img, path, name, groups=None):
     """Exporta o .glb referenciando <name>.png na mesma pasta."""
     groups = groups or GROUPS
@@ -500,7 +522,8 @@ def write_glb(cubes, img, path, name, groups=None):
         return len(buffer_views) - 1
 
     mesh_index = {}
-    for gname, _, _ in groups:
+    for g in groups:
+        gname = g[0]
         gcubes = [c for c in cubes if c.group == gname]
         if not gcubes:
             continue
@@ -541,14 +564,18 @@ def write_glb(cubes, img, path, name, groups=None):
 
     nodes = []
     node_index = {}
-    for gname, pivot, parent in groups:
+    for g in groups:
+        gname, pivot, parent = g[0], g[1], g[2]
         local = pivot if parent is None else tuple(pivot[k] - group_pivot[parent][k] for k in range(3))
         node = {"name": gname, "translation": [v * scale for v in local]}
+        if len(g) > 3 and any(g[3]):
+            node["rotation"] = list(euler_to_quat(g[3]))
         if gname in mesh_index:
             node["mesh"] = mesh_index[gname]
         nodes.append(node)
         node_index[gname] = len(nodes) - 1
-    for gname, _, parent in groups:
+    for g in groups:
+        gname, parent = g[0], g[2]
         if parent:
             nodes[node_index[parent]].setdefault("children", []).append(node_index[gname])
 
