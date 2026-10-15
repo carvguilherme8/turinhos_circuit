@@ -1,0 +1,286 @@
+[gd_scene load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
+[ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="camera"]
+[ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="hud"]
+[ext_resource type="Script" path="res://scripts/ui/landing_popup.gd" id="popup"]
+[ext_resource type="Script" path="res://scripts/tracks/stadium_track.gd" id="track"]
+[ext_resource type="Script" path="res://scripts/tracks/stadium.gd" id="stadium"]
+[ext_resource type="Material" path="res://assets/materials/stadium/dirt_track.tres" id="dirt_track"]
+[ext_resource type="Material" path="res://assets/materials/stadium/dirt_infield.tres" id="dirt_infield"]
+[ext_resource type="Material" path="res://assets/materials/stadium/tuff_block.tres" id="tuff_block"]
+[ext_resource type="Material" path="res://assets/materials/stadium/concrete.tres" id="concrete"]
+[ext_resource type="Material" path="res://assets/materials/stadium/crowd.tres" id="crowd"]
+[ext_resource type="Material" path="res://assets/materials/stadium/banner.tres" id="banner"]
+[ext_resource type="Material" path="res://assets/materials/stadium/jumbotron.tres" id="jumbotron"]
+[ext_resource type="Material" path="res://assets/materials/stadium/checker.tres" id="checker"]
+[ext_resource type="Material" path="res://assets/materials/stadium/metal.tres" id="metal"]
+[ext_resource type="Material" path="res://assets/materials/stadium/light_panel.tres" id="light_panel"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.16, 0.18, 0.42, 1)
+sky_horizon_color = Color(0.95, 0.55, 0.38, 1)
+ground_bottom_color = Color(0.12, 0.1, 0.14, 1)
+ground_horizon_color = Color(0.95, 0.55, 0.38, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+ambient_light_energy = 0.9
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.6
+glow_bloom = 0.05
+
+[node name="StadiumCircuit" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.5, 0, 0.866, 0.2676, 0.9511, -0.1545, -0.8236, 0.309, 0.4755, 0, 30, 0)
+light_color = Color(1, 0.74, 0.52, 1)
+shadow_enabled = true
+directional_shadow_max_distance = 140.0
+
+[node name="Track" type="Node3D" parent="."]
+script = ExtResource("track")
+track_material = ExtResource("dirt_track")
+infield_material = ExtResource("dirt_infield")
+block_material = ExtResource("tuff_block")
+finish_material = ExtResource("checker")
+banner_material = ExtResource("banner")
+metal_material = ExtResource("metal")
+
+[node name="Stadium" type="Node3D" parent="."]
+script = ExtResource("stadium")
+concrete_material = ExtResource("concrete")
+crowd_material = ExtResource("crowd")
+banner_material = ExtResource("banner")
+metal_material = ExtResource("metal")
+light_material = ExtResource("light_panel")
+screen_material = ExtResource("jumbotron")
+outside_material = ExtResource("concrete")
+
+[node name="Ramps" type="Node3D" parent="."]
+
+[node name="A_Mesa" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, 26)
+script = ExtResource("ramp")
+up_length = 6
+top_length = 12
+down_length = 10
+height = 1.6
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="A_Kicker" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, -6)
+script = ExtResource("ramp")
+up_length = 4
+top_length = 0
+down_length = 0
+height = 1.4
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="A_Pouso" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, -22)
+script = ExtResource("ramp")
+up_length = 0
+top_length = 1
+down_length = 9
+height = 1.4
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela1" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -31)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela2" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -27.6)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela3" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -24.2)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela4" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -20.8)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela5" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -17.4)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela6" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -14)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela7" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -10.6)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Costela8" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, -7.2)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="B_Mesa" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -7, 0, 6)
+script = ExtResource("ramp")
+up_length = 5
+top_length = 10
+down_length = 10
+height = 1.2
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="C_Kicker1" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 30)
+script = ExtResource("ramp")
+up_length = 4
+top_length = 0
+down_length = 0
+height = 1.2
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="C_Pouso1" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 16)
+script = ExtResource("ramp")
+up_length = 0
+top_length = 1
+down_length = 7
+height = 1.2
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="C_Kicker2" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
+script = ExtResource("ramp")
+up_length = 5
+top_length = 0
+down_length = 0
+height = 1.6
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="C_Pouso2" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -16)
+script = ExtResource("ramp")
+up_length = 0
+top_length = 1
+down_length = 9
+height = 1.6
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="D_Kicker" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, -28)
+script = ExtResource("ramp")
+up_length = 7
+top_length = 0
+down_length = 0
+height = 2.4
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="D_Pouso" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, -10)
+script = ExtResource("ramp")
+up_length = 0
+top_length = 1.5
+down_length = 10
+height = 2.4
+width = 8
+material = ExtResource("dirt_track")
+
+[node name="Bike" parent="." instance=ExtResource("bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 46)
+
+[node name="ChaseCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 3, 52)
+current = true
+fov = 70.0
+far = 600.0
+script = ExtResource("camera")
+target = NodePath("../Bike")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="DebugLabel" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 620.0
+offset_bottom = 160.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 20
+script = ExtResource("hud")
+bike = NodePath("../../Bike")
+
+[node name="LandingPopup" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
+anchor_right = 1.0
+offset_top = 180.0
+offset_bottom = 250.0
+horizontal_alignment = 1
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 44
+script = ExtResource("popup")
+bike = NodePath("../../Bike")

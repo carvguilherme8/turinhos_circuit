@@ -31,6 +31,11 @@ extends StaticBody3D
 	set(value):
 		color = value
 		_rebuild()
+## Material opcional (ex.: terra pixelada com UV triplanar). Sem ele, usa `color`.
+@export var material: Material:
+	set(value):
+		material = value
+		_rebuild()
 
 var _mesh_instance: MeshInstance3D
 var _collision: CollisionShape3D
@@ -83,9 +88,12 @@ func _rebuild() -> void:
 			points.append(Vector3(side * half, p.x, p.y))
 		_add_polygon(st, points, Vector3(side, 0.0, 0.0), side_color)
 
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	st.set_material(mat)
+	if material:
+		st.set_material(material)
+	else:
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		st.set_material(mat)
 	_mesh_instance.mesh = st.commit()
 
 	var hull := PackedVector3Array()

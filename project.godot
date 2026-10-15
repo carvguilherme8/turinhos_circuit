@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Turinhos Circuit"
 config/description="Jogo arcade de motocross low poly."
-run/main_scene="res://scenes/tracks/playground.tscn"
+run/main_scene="res://scenes/tracks/stadium_circuit.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
