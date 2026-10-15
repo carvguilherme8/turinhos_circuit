@@ -55,6 +55,10 @@ var _safe_points: Array[Dictionary] = []
 
 var _steer: float = 0.0
 var _throttle: float = 0.0
+var _brake: float = 0.0
+## Ângulo (rad) e velocidade do pêndulo numa roda só: + wheelie, - traseira no alto.
+var _one_wheel_angle: float = 0.0
+var _one_wheel_rate: float = 0.0
 ## Peso do piloto: +1 = todo para trás (empinar), -1 = todo para frente.
 var _rider_pitch: float = 0.0
 ## Peso do piloto para os lados: +1 = direita.
@@ -70,6 +74,10 @@ var _front_wheel_rest_y: float = 0.0
 var _rear_wheel_rest_y: float = 0.0
 var _fork_slider_rest: Vector3
 var _swingarm_length: float = 0.5
+var _visual_rest: Vector3
+var _visual_lean: float = 0.0
+## Ângulo visual numa roda só (segue o pêndulo; no ar volta suave para zero).
+var _visual_pitch: float = 0.0
 
 @onready var _front_ray: RayCast3D = $FrontWheelRay
 @onready var _rear_ray: RayCast3D = $RearWheelRay
@@ -97,6 +105,7 @@ func _ready() -> void:
 	_front_wheel_y = _front_wheel_rest_y
 	_rear_wheel_y = _rear_wheel_rest_y
 	_fork_slider_rest = fork_slider.position
+	_visual_rest = _visual.position
 	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
 
 
@@ -122,6 +131,7 @@ func respawn(min_age: float = 0.0) -> void:
 	drift_amount = 0.0
 	air_time = 0.0
 	is_crashed = false
+	_reset_one_wheel()
 	respawned.emit()
 
 
@@ -153,6 +163,7 @@ func _physics_process(delta: float) -> void:
 	var steer_input := Input.get_axis("esquerda", "direita")
 	var handbrake := Input.is_action_pressed("freio_mao") and is_grounded()
 	_throttle = throttle
+	_brake = brake
 	_rider_pitch = Input.get_axis("inclinar_frente", "inclinar_tras")
 	_rider_side = Input.get_axis("inclinar_esquerda", "inclinar_direita")
 	var drift_rate := 10.0 if handbrake else stats.drift_recovery
@@ -185,6 +196,12 @@ func _track_air_and_landing(delta: float) -> void:
 		if tilt > stats.crash_tilt_angle:
 			_crash()
 
+	# Wheelie ou traseira no alto além do limite: a moto vira.
+	var one_wheel_degrees := rad_to_deg(_one_wheel_angle)
+	if not is_crashed and (one_wheel_degrees > stats.wheelie_crash_angle
+			or one_wheel_degrees < -stats.stoppie_crash_angle):
+		_crash()
+
 
 ## Compara o "para cima" da moto com a normal do chão onde ela tocou:
 ## pousar inclinado junto com a rampa de descida conta como alinhado.
@@ -207,6 +224,10 @@ func _evaluate_landing() -> void:
 
 
 func _crash() -> void:
+	if not is_zero_approx(_visual_pitch):
+		global_transform = global_transform * _one_wheel_transform(_visual_pitch, _visual_rest)
+		_visual_pitch = 0.0
+	_reset_one_wheel()
 	is_crashed = true
 	_crash_timer = stats.respawn_delay
 	drift_amount = 0.0
@@ -287,7 +308,7 @@ func _drive(forward: Vector3, throttle: float, brake: float, handbrake: bool, de
 		# Roda traseira travada: sem tração, só arrasta na terra.
 		new_speed = move_toward(new_speed, 0.0, stats.handbrake_deceleration * delta)
 		throttle = 0.0
-	elif throttle > 0.0 and rear_grounded:
+	elif throttle > 0.0 and rear_grounded and _one_wheel_angle > -0.05:
 		# Aceleração cheia até 75% da máxima, depois diminui até zero na máxima.
 		var taper := clampf((stats.max_speed - speed) / (stats.max_speed * 0.25), 0.0, 1.0)
 		new_speed += throttle * stats.acceleration * taper * delta
@@ -322,6 +343,7 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 		var speed := _flat_velocity.length()
 		var speed_ratio := speed / stats.max_speed
 		var steer_factor := clampf(speed / stats.full_steer_speed, 0.0, 1.0)
+		steer_factor *= lerpf(1.0, 0.25, clampf(_one_wheel_angle / deg_to_rad(20.0), 0.0, 1.0))
 		steer_factor *= lerpf(1.0, stats.high_speed_steer_factor, clampf(speed_ratio, 0.0, 1.0))
 		var direction := -1.0 if forward_speed < -0.1 else 1.0
 		# Direita = giro negativo em torno do "para cima".
@@ -337,6 +359,7 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 		av += _ground_normal * (target_yaw - yaw) * clampf(stats.steer_response * delta, 0.0, 1.0)
 		av = _rider_weight_ground(av, delta)
 	else:
+		_reset_one_wheel()
 		av = _rider_weight_air(av, delta)
 
 	# Equilíbrio: só no eixo de rolagem (o pitch fica livre para suspensão e saltos).
@@ -354,21 +377,54 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 
 
 ## No chão: peso para trás empina (wheelie), peso para frente levanta a traseira.
-## Sem comando, o pitch fica por conta da suspensão.
+## O ângulo numa roda só é um pêndulo (_one_wheel_angle): o comando empurra, a gravidade
+## puxa de volta até o ponto de equilíbrio e, passando dele, a moto vira.
+## É só visual (o modelo gira sobre a roda apoiada); o corpo físico fica nas duas rodas,
+## para não brigar com a suspensão.
 func _rider_weight_ground(av: Vector3, delta: float) -> Vector3:
-	if absf(_rider_pitch) < 0.05:
-		return av
-	var target := 0.0
-	if _rider_pitch > 0.0:
-		var throttle_share := lerpf(stats.wheelie_without_throttle, 1.0, _throttle)
-		target = deg_to_rad(stats.wheelie_angle) * _rider_pitch * throttle_share
-	else:
-		target = deg_to_rad(stats.stoppie_angle) * _rider_pitch
-	var pitch_axis := global_basis.x
-	var pitch := asin(clampf((-global_basis.z).dot(_ground_normal), -1.0, 1.0))
-	# O comando define a velocidade de pitch direto (vence a mola e a gravidade a cada passo).
-	var target_rate := (target - pitch) * stats.ground_pitch_response
-	return av + pitch_axis * (target_rate - av.dot(pitch_axis))
+	var previous := _one_wheel_angle
+	var accel := 0.0
+	if _one_wheel_angle >= 0.0:
+		if _rider_pitch > 0.05 and rear_grounded:
+			var throttle_share := lerpf(stats.wheelie_without_throttle, 1.0, _throttle)
+			accel += stats.wheelie_strength * _rider_pitch * throttle_share
+		accel -= stats.wheelie_brake_strength * _brake
+		accel -= stats.one_wheel_gravity * _balance(_one_wheel_angle, stats.wheelie_balance_angle)
+	if _one_wheel_angle <= 0.0:
+		# É o embalo que segura a traseira no alto: devagar, ela desce mesmo além do equilíbrio.
+		var speed_share := clampf(absf(forward_speed) / 8.0, 0.0, 1.0)
+		if _rider_pitch < -0.05 and front_grounded:
+			accel -= stats.stoppie_strength * -_rider_pitch * speed_share
+		accel += stats.one_wheel_gravity * _balance(-_one_wheel_angle, stats.stoppie_balance_angle)
+		accel += stats.one_wheel_gravity * 2.0 * (1.0 - speed_share)
+
+	_one_wheel_rate += accel * delta
+	_one_wheel_rate -= _one_wheel_rate * clampf(stats.one_wheel_damping * delta, 0.0, 1.0)
+	_one_wheel_angle += _one_wheel_rate * delta
+	# Voltou para as duas rodas (sem comando segurando do outro lado): para no zero.
+	if (previous > 0.0 and _one_wheel_angle <= 0.0 and _rider_pitch > -0.05) \
+			or (previous < 0.0 and _one_wheel_angle >= 0.0 and _rider_pitch < 0.05):
+		_reset_one_wheel()
+
+	return av
+
+
+## 1 com a moto nas duas rodas, 0 no ponto de equilíbrio, negativo depois dele.
+## Curva quadrática: a gravidade ainda puxa forte no meio do wheelie (soltar salva)
+## e só some perto do equilíbrio.
+func _balance(angle: float, balance_degrees: float) -> float:
+	var ratio := angle / deg_to_rad(balance_degrees)
+	return 1.0 - ratio * ratio
+
+
+func _reset_one_wheel() -> void:
+	_one_wheel_angle = 0.0
+	_one_wheel_rate = 0.0
+
+
+## Ângulo de pitch em relação ao chão (positivo = nariz para cima).
+func _ground_pitch_degrees() -> float:
+	return rad_to_deg(asin(clampf((-global_basis.z).dot(_ground_normal), -1.0, 1.0)))
 
 
 ## No ar: peso frente/trás gira a moto (pitch); para os lados faz o whip, jogando a traseira.
@@ -398,11 +454,27 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	return av
 
 
+## Giro de `angle` (+ nariz para cima) em torno do ponto onde a roda apoiada toca o chão:
+## roda traseira no wheelie, dianteira com a traseira no alto. `ground` é a posição do chão
+## sob o centro da moto no espaço em que o giro é aplicado.
+func _one_wheel_transform(angle: float, ground: Vector3) -> Transform3D:
+	var contact_z := _rear_ray.position.z if angle > 0.0 else _front_ray.position.z
+	var pivot := ground + Vector3(0.0, 0.0, contact_z)
+	var rotation := Basis(Vector3.RIGHT, angle)
+	return Transform3D(rotation, pivot - rotation * pivot)
+
+
 func _update_visuals(delta: float) -> void:
 	var speed_ratio := clampf(absf(forward_speed) / stats.max_speed, 0.0, 1.0)
 	var lean_degrees := stats.visual_lean_degrees * (1.0 + 0.4 * drift_amount)
 	var lean := -_steer * deg_to_rad(lean_degrees) * speed_ratio if is_grounded() else 0.0
-	_visual.rotation.z = lerp_angle(_visual.rotation.z, lean, clampf(8.0 * delta, 0.0, 1.0))
+	_visual_lean = lerp_angle(_visual_lean, lean, clampf(8.0 * delta, 0.0, 1.0))
+	if is_grounded():
+		_visual_pitch = _one_wheel_angle
+	else:
+		_visual_pitch = lerpf(_visual_pitch, 0.0, clampf(10.0 * delta, 0.0, 1.0))
+	var lean_transform := Transform3D(Basis(Vector3.BACK, _visual_lean), _visual_rest)
+	_visual.transform = lean_transform * _one_wheel_transform(_visual_pitch, Vector3.ZERO)
 
 	# Guidão: gira em torno do eixo de direção inclinado; esterça menos em alta velocidade.
 	var rake := deg_to_rad(fork_rake_degrees)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
@@ -7,8 +7,12 @@
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
 
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_engine"]
+radius = 0.18
+height = 0.9
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(0.5, 0.75, 1.7)
+size = Vector3(0.5, 0.51, 1.2)
 
 [node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm")]
 mass = 150.0
@@ -24,8 +28,12 @@ steering = NodePath("Visual/Model/motocross/fork")
 fork_slider = NodePath("Visual/Model/motocross/fork/fork_lower")
 swingarm = NodePath("Visual/Model/motocross/swingarm")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
+[node name="EngineShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, -0.15, 0)
+shape = SubResource("CapsuleShape3D_engine")
+
+[node name="BodyShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.185, 0.1)
 shape = SubResource("BoxShape3D_body")
 
 [node name="FrontWheelRay" type="RayCast3D" parent="."]

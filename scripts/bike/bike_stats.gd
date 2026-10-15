@@ -51,14 +51,28 @@ extends Resource
 @export_range(0.0, 10.0, 0.1) var air_yaw_align: float = 3.0
 
 @export_group("Peso do piloto")
-## Ângulo máximo de wheelie (empinar) com o peso todo para trás.
-@export_range(0.0, 60.0, 1.0, "suffix:°") var wheelie_angle: float = 28.0
-## Ângulo máximo levantando a traseira com o peso todo para frente.
-@export_range(0.0, 45.0, 1.0, "suffix:°") var stoppie_angle: float = 20.0
-## Força com que o piloto puxa a moto para o ângulo desejado no chão.
-@export_range(0.5, 20.0, 0.5) var ground_pitch_response: float = 4.5
-## Fração do wheelie disponível sem acelerar (o resto vem do acelerador).
+## Wheelie e traseira no alto funcionam como um pêndulo: o comando empurra, a gravidade
+## puxa de volta até o ponto de equilíbrio e, depois dele, puxa para o outro lado (a moto vira).
+## Força do wheelie (peso para trás + acelerador).
+@export_range(0.0, 60.0, 0.5, "suffix:rad/s²") var wheelie_strength: float = 8.0
+## Fração da força do wheelie disponível sem acelerar (o resto vem do acelerador).
 @export_range(0.0, 1.0, 0.05) var wheelie_without_throttle: float = 0.5
+## Ângulo em que a moto empinada se equilibra sozinha; passou disso, ela tende a virar.
+@export_range(10.0, 80.0, 1.0, "suffix:°") var wheelie_balance_angle: float = 50.0
+## Freio derruba a frente durante o wheelie (como o freio traseiro de verdade).
+@export_range(0.0, 60.0, 0.5, "suffix:rad/s²") var wheelie_brake_strength: float = 10.0
+## Força para levantar a traseira (peso para frente); precisa de velocidade.
+@export_range(0.0, 60.0, 0.5, "suffix:rad/s²") var stoppie_strength: float = 9.0
+## Ângulo de equilíbrio com a traseira no alto.
+@export_range(10.0, 80.0, 1.0, "suffix:°") var stoppie_balance_angle: float = 50.0
+## Gravidade puxando a moto de volta para as duas rodas (no chão, sem ângulo).
+@export_range(0.0, 60.0, 0.5, "suffix:rad/s²") var one_wheel_gravity: float = 6.0
+## Amortecimento do movimento numa roda só (maior = mais fácil de equilibrar).
+@export_range(0.0, 10.0, 0.1) var one_wheel_damping: float = 3.0
+## Passou deste ângulo empinado (no chão), a moto vira para trás: queda.
+@export_range(30.0, 90.0, 1.0, "suffix:°") var wheelie_crash_angle: float = 75.0
+## Passou deste ângulo com a traseira no alto, a moto capota para frente: queda.
+@export_range(20.0, 90.0, 1.0, "suffix:°") var stoppie_crash_angle: float = 55.0
 ## Velocidade de giro (pitch) no ar com o analógico/seta no máximo.
 @export_range(0.5, 10.0, 0.1, "suffix:rad/s") var air_pitch_rate: float = 3.5
 ## Rapidez com que o giro no ar responde ao comando.
