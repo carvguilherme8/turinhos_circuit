@@ -1,0 +1,226 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="1_ramp"]
+[ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="2_bike"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="4_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.29, 0.56, 0.85, 1)
+sky_horizon_color = Color(0.95, 0.76, 0.56, 1)
+ground_horizon_color = Color(0.95, 0.76, 0.56, 1)
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+tonemap_mode = 2
+
+[sub_resource type="BoxShape3D" id="GroundShape"]
+size = Vector3(400, 1, 400)
+
+[sub_resource type="Shader" id="GroundShader"]
+code = "shader_type spatial;
+// Chão de terra com grade de 5 m, para dar noção de velocidade e distância.
+uniform vec3 dirt : source_color = vec3(0.55, 0.36, 0.18);
+uniform vec3 line : source_color = vec3(0.45, 0.28, 0.13);
+varying vec3 world_pos;
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec2 cell = abs(fract(world_pos.xz / 5.0 + 0.5) - 0.5) * 5.0;
+	float w = fwidth(world_pos.x) + fwidth(world_pos.z);
+	float grid = 1.0 - smoothstep(0.05, 0.05 + w, min(cell.x, cell.y));
+	ALBEDO = mix(dirt, line, grid);
+	ROUGHNESS = 1.0;
+}
+"
+
+[sub_resource type="ShaderMaterial" id="GroundMat"]
+shader = SubResource("GroundShader")
+
+[sub_resource type="BoxMesh" id="GroundMesh"]
+material = SubResource("GroundMat")
+size = Vector3(400, 1, 400)
+
+[node name="Playground" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.000000, 0.500000, 0.383022, 0.642788, -0.663414, -0.321394, 0.766044, 0.556670, 0, 10, 0)
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("GroundShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("GroundMesh")
+
+[node name="Ramps" type="Node3D" parent="."]
+
+[node name="Whoop1" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="Whoop2" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -43.5)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="Whoop3" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -47)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="Whoop4" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -50.5)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="Whoop5" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -54)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="Whoop6" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -57.5)
+script = ExtResource("1_ramp")
+up_length = 1.5
+top_length = 0
+down_length = 1.5
+height = 0.5
+width = 5
+color = Color(0.69, 0.478, 0.271, 1)
+
+[node name="MesaPequena" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 5
+top_length = 6
+down_length = 5
+height = 1.2
+width = 5
+
+[node name="KickerPequeno" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 4
+top_length = 0
+down_length = 0
+height = 1
+width = 5
+
+[node name="PousoPequeno" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -55)
+script = ExtResource("1_ramp")
+up_length = 0
+top_length = 1
+down_length = 6
+height = 1
+width = 5
+color = Color(0.561, 0.392, 0.22, 1)
+
+[node name="KickerMedio" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 7
+top_length = 0
+down_length = 0
+height = 2.2
+width = 5
+
+[node name="PousoMedio" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -61)
+script = ExtResource("1_ramp")
+up_length = 0
+top_length = 1
+down_length = 10
+height = 2.2
+width = 5
+color = Color(0.561, 0.392, 0.22, 1)
+
+[node name="KickerGrande" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 9
+top_length = 0
+down_length = 0
+height = 3.5
+width = 5
+
+[node name="PousoGrande" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, -63)
+script = ExtResource("1_ramp")
+up_length = 0
+top_length = 1
+down_length = 14
+height = 3.5
+width = 5
+color = Color(0.561, 0.392, 0.22, 1)
+
+[node name="MesaLarga" type="StaticBody3D" parent="Ramps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, -40)
+script = ExtResource("1_ramp")
+up_length = 6
+top_length = 20
+down_length = 6
+height = 1.5
+width = 10
+
+[node name="Bike" parent="." instance=ExtResource("2_bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+
+[node name="ChaseCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 6)
+current = true
+fov = 70.0
+script = ExtResource("3_camera")
+target = NodePath("../Bike")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="DebugLabel" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 620.0
+offset_bottom = 140.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 20
+script = ExtResource("4_hud")
+bike = NodePath("../../Bike")
