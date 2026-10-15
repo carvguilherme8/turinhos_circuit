@@ -402,13 +402,15 @@ def new_uuid():
     return str(uuid.uuid4())
 
 
-def write_bbmodel(cubes, img, path, name):
+def write_bbmodel(cubes, img, path, name, groups=None):
+    groups = groups or GROUPS
+    root = groups[0][0]
     buf = io.BytesIO()
     img.save(buf, "PNG")
     tex_data = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
     elements = []
-    by_group = {g[0]: [] for g in GROUPS}
+    by_group = {g[0]: [] for g in groups}
     for c in cubes:
         uid = new_uuid()
         el = {
@@ -427,8 +429,8 @@ def write_bbmodel(cubes, img, path, name):
         by_group[c.group].append(uid)
 
     def group_node(gname):
-        g = next(g for g in GROUPS if g[0] == gname)
-        children = [group_node(o[0]) for o in GROUPS if o[2] == gname] + by_group[gname]
+        g = next(g for g in groups if g[0] == gname)
+        children = [group_node(o[0]) for o in groups if o[2] == gname] + by_group[gname]
         return {"name": gname, "origin": list(g[1]), "color": 0, "uuid": new_uuid(),
                 "export": True, "mirror_uv": False, "isOpen": True, "locked": False,
                 "visibility": True, "autouv": 0, "children": children}
@@ -444,7 +446,7 @@ def write_bbmodel(cubes, img, path, name):
         "unhandled_root_fields": {},
         "resolution": {"width": img.width, "height": img.height},
         "elements": elements,
-        "outliner": [group_node("motocross")],
+        "outliner": [group_node(root)],
         "textures": [{
             "path": "", "name": name + ".png", "folder": "", "namespace": "", "id": "0",
             "width": img.width, "height": img.height, "uv_width": img.width, "uv_height": img.height,
@@ -478,11 +480,11 @@ NORMALS = {"north": (0, 0, -1), "south": (0, 0, 1), "east": (1, 0, 0),
            "west": (-1, 0, 0), "up": (0, 1, 0), "down": (0, -1, 0)}
 
 
-def write_glb(cubes, img, path, name):
+def write_glb(cubes, img, path, name, groups=None):
     """Exporta o .glb referenciando <name>.png na mesma pasta."""
+    groups = groups or GROUPS
     scale = 1.0 / 16.0
-    group_pivot = {g[0]: g[1] for g in GROUPS}
-    group_parent = {g[0]: g[2] for g in GROUPS}
+    group_pivot = {g[0]: g[1] for g in groups}
 
     def world_pivot(g):
         return group_pivot[g]
@@ -498,7 +500,7 @@ def write_glb(cubes, img, path, name):
         return len(buffer_views) - 1
 
     mesh_index = {}
-    for gname, _, _ in GROUPS:
+    for gname, _, _ in groups:
         gcubes = [c for c in cubes if c.group == gname]
         if not gcubes:
             continue
@@ -539,21 +541,21 @@ def write_glb(cubes, img, path, name):
 
     nodes = []
     node_index = {}
-    for gname, pivot, parent in GROUPS:
+    for gname, pivot, parent in groups:
         local = pivot if parent is None else tuple(pivot[k] - group_pivot[parent][k] for k in range(3))
         node = {"name": gname, "translation": [v * scale for v in local]}
         if gname in mesh_index:
             node["mesh"] = mesh_index[gname]
         nodes.append(node)
         node_index[gname] = len(nodes) - 1
-    for gname, _, parent in GROUPS:
+    for gname, _, parent in groups:
         if parent:
             nodes[node_index[parent]].setdefault("children", []).append(node_index[gname])
 
     gltf = {
         "asset": {"version": "2.0", "generator": "turinhos gen_motocross.py"},
         "scene": 0,
-        "scenes": [{"name": name, "nodes": [node_index["motocross"]]}],
+        "scenes": [{"name": name, "nodes": [node_index[groups[0][0]]]}],
         "nodes": nodes,
         "meshes": meshes,
         "materials": [{"name": name, "pbrMetallicRoughness": {

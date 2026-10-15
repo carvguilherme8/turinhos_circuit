@@ -1,10 +1,12 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="1_ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="2_bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/ui/landing_popup.gd" id="5_popup"]
+[ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="6_hints"]
+[ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="7_switcher"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.29, 0.56, 0.85, 1)
@@ -54,7 +56,7 @@ size = Vector3(400, 1, 400)
 environment = SubResource("Env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866025, 0.000000, 0.500000, 0.383022, 0.642788, -0.663414, -0.321394, 0.766044, 0.556670, 0, 10, 0)
+transform = Transform3D(0.866025, 0.383022, -0.321394, 0.000000, 0.642788, 0.766044, 0.500000, -0.663414, 0.556670, 0, 10, 0)
 shadow_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]
@@ -236,3 +238,22 @@ theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 44
 script = ExtResource("5_popup")
 bike = NodePath("../../Bike")
+
+[node name="ControlHints" type="Label" parent="HUD"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -96.0
+offset_right = 1000.0
+offset_bottom = -16.0
+grow_vertical = 0
+vertical_alignment = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 18
+script = ExtResource("6_hints")
+
+[node name="CameraSwitcher" type="Node" parent="." node_paths=PackedStringArray("bike", "chase_camera")]
+script = ExtResource("7_switcher")
+bike = NodePath("../Bike")
+chase_camera = NodePath("../ChaseCamera")

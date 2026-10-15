@@ -14,11 +14,15 @@ const ACTIONS := {
 	"inclinar_direita": [KEY_RIGHT],
 	"freio_mao": [KEY_SPACE],
 	"resetar_moto": [KEY_R],
+	"trocar_camera": [KEY_C],
+	"alternar_dicas": [KEY_H],
 	"pausar": [KEY_ESCAPE],
 }
 
 const PAD_BUTTONS := {
 	"freio_mao": JOY_BUTTON_A,
+	"trocar_camera": JOY_BUTTON_BACK,
+	"alternar_dicas": JOY_BUTTON_DPAD_UP,
 	"resetar_moto": JOY_BUTTON_Y,
 	"pausar": JOY_BUTTON_START,
 }

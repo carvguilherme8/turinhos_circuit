@@ -34,6 +34,13 @@ const SAFE_POINT_MIN_AGE := 1.0
 @export var fork_rake_degrees: float = 22.5
 @export var handlebar_angle_low_speed: float = 30.0
 @export var handlebar_angle_high_speed: float = 10.0
+## Piloto (some na câmera do guidão) e a parte de cima dele, que inclina com o peso.
+@export var rider: Node3D
+@export var rider_upper: Node3D
+## Inclinação do tronco do piloto com o peso todo para frente/trás.
+@export var rider_lean_degrees: float = 12.0
+## Câmera em cima do guidão (primeira pessoa).
+@export var first_person_camera: Camera3D
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
@@ -489,6 +496,10 @@ func _update_visuals(delta: float) -> void:
 	# Suspensão traseira: a balança gira no pivô até a roda chegar à altura certa.
 	var rear_travel := clampf(_rear_wheel_y - _rear_wheel_rest_y, -0.3, 0.4)
 	swingarm.rotation.x = -asin(clampf(rear_travel / _swingarm_length, -0.9, 0.9))
+
+	if rider_upper:
+		var lean_back := _rider_pitch * deg_to_rad(rider_lean_degrees)
+		rider_upper.rotation.x = lerp_angle(rider_upper.rotation.x, lean_back, clampf(10.0 * delta, 0.0, 1.0))
 
 	var spin := -forward_speed / stats.wheel_radius * delta
 	front_wheel.rotate_x(spin)

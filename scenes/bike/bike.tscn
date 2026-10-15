@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
 [ext_resource type="PackedScene" path="res://assets/models/bikes/motocross/motocross.glb" id="3_model"]
+[ext_resource type="PackedScene" path="res://assets/models/riders/rider/rider.glb" id="4_rider"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
@@ -14,7 +15,7 @@ height = 0.9
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(0.5, 0.51, 1.2)
 
-[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm")]
+[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm", "rider", "rider_upper", "first_person_camera")]
 mass = 150.0
 physics_material_override = SubResource("PhysicsMaterial_body")
 gravity_scale = 1.6
@@ -27,6 +28,9 @@ rear_wheel = NodePath("Visual/Model/motocross/swingarm/wheel_rear")
 steering = NodePath("Visual/Model/motocross/fork")
 fork_slider = NodePath("Visual/Model/motocross/fork/fork_lower")
 swingarm = NodePath("Visual/Model/motocross/swingarm")
+rider = NodePath("Visual/Rider")
+rider_upper = NodePath("Visual/Rider/rider/upper")
+first_person_camera = NodePath("Visual/FirstPersonCamera")
 
 [node name="EngineShape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, -0.15, 0)
@@ -48,3 +52,11 @@ target_position = Vector3(0, -0.825, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.69, 0)
 
 [node name="Model" parent="Visual" instance=ExtResource("3_model")]
+
+[node name="Rider" parent="Visual" instance=ExtResource("4_rider")]
+
+[node name="FirstPersonCamera" type="Camera3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 0.970296, 0.241922, 0, -0.241922, 0.970296, 0, 1.62, 0.02)
+fov = 80.0
+near = 0.03
+far = 600.0
