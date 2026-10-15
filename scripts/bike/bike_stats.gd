@@ -47,8 +47,26 @@ extends Resource
 @export_group("Equilíbrio")
 ## Força com que a moto volta a ficar em pé no eixo de rolagem.
 @export_range(0.0, 30.0, 0.5) var roll_stiffness: float = 10.0
-## Amortecimento do giro (guinada) no ar, para a moto não rodopiar.
-@export_range(0.0, 10.0, 0.1) var air_yaw_damping: float = 2.0
+## No ar, rapidez com que a moto alinha a frente com a direção do salto (sem whip).
+@export_range(0.0, 10.0, 0.1) var air_yaw_align: float = 3.0
+
+@export_group("Peso do piloto")
+## Ângulo máximo de wheelie (empinar) com o peso todo para trás.
+@export_range(0.0, 60.0, 1.0, "suffix:°") var wheelie_angle: float = 28.0
+## Ângulo máximo levantando a traseira com o peso todo para frente.
+@export_range(0.0, 45.0, 1.0, "suffix:°") var stoppie_angle: float = 20.0
+## Força com que o piloto puxa a moto para o ângulo desejado no chão.
+@export_range(0.5, 20.0, 0.5) var ground_pitch_response: float = 4.5
+## Fração do wheelie disponível sem acelerar (o resto vem do acelerador).
+@export_range(0.0, 1.0, 0.05) var wheelie_without_throttle: float = 0.5
+## Velocidade de giro (pitch) no ar com o analógico/seta no máximo.
+@export_range(0.5, 10.0, 0.1, "suffix:rad/s") var air_pitch_rate: float = 3.5
+## Rapidez com que o giro no ar responde ao comando.
+@export_range(0.5, 20.0, 0.5) var air_pitch_response: float = 5.0
+## Whip: quanto a moto deita de lado no ar.
+@export_range(0.0, 80.0, 1.0, "suffix:°") var whip_roll_angle: float = 55.0
+## Whip: quanto a traseira é jogada para o lado no ar.
+@export_range(0.0, 60.0, 1.0, "suffix:°") var whip_yaw_angle: float = 30.0
 
 @export_group("Suspensão")
 @export_range(0.1, 1.5, 0.01, "suffix:m") var suspension_rest_length: float = 0.45

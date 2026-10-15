@@ -30,6 +30,10 @@ WHEEL_R = 6.0
 FRONT_AXLE = (0.0, 6.0, -12.0)
 REAR_AXLE = (0.0, 6.0, 12.0)
 RAKE = 22.5  # inclinação do garfo (graus em torno de X)
+# Eixo de direção: passa pelo eixo da roda dianteira, inclinado RAKE graus para trás.
+STEER_AXIS = (0.0, math.cos(math.radians(RAKE)), math.sin(math.radians(RAKE)))
+STEER_PIVOT = tuple(FRONT_AXLE[i] + 10.0 * STEER_AXIS[i] for i in range(3))
+SWINGARM_PIVOT = (0.0, 6.1, 3.5)
 
 
 def hex_color(h):
@@ -256,7 +260,7 @@ def build_cubes(pal):
     C.append(Cube("sprocket_b", "wheel_rear", (-2.4, 3.5, 10.5), (-2.0, 8.5, 13.5), flat("gold")))
 
     # ---- garfo (tudo inclinado 22,5° em torno do eixo da roda dianteira)
-    C += mirror_x("fork_lower", "fork", (2.1, 5.0, -13.0), (3.4, 11.5, -11.0), flat("primary_dark"), rake, fa)
+    C += mirror_x("fork_lower", "fork_lower", (2.1, 5.0, -13.0), (3.4, 11.5, -11.0), flat("primary_dark"), rake, fa)
     C += mirror_x("fork_upper", "fork", (2.2, 11.5, -12.6), (3.2, 18.5, -11.4), flat("metal", grain=0.03), rake, fa)
     C.append(Cube("clamp_bottom", "fork", (-3.6, 14.5, -13.0), (3.6, 15.5, -9.5), flat("metal_dark"), rake, fa))
     C.append(Cube("clamp_top", "fork", (-3.6, 18.0, -13.0), (3.6, 19.0, -9.5), flat("metal_dark"), rake, fa))
@@ -290,7 +294,7 @@ def build_cubes(pal):
     C.append(Cube("radiator", "frame", (-3.0, 9.5, -6.5), (3.0, 14.0, -5.0), flat("tire")))
 
     # ---- suspensão traseira
-    C += mirror_x("swingarm", "frame", (2.2, 5.3, 3.5), (3.3, 6.9, 12.8), flat("metal"))
+    C += mirror_x("swingarm", "swingarm", (2.2, 5.3, 3.5), (3.3, 6.9, 12.8), flat("metal"))
     C.append(Cube("shock_spring", "frame", (-0.9, 7.0, 4.2), (0.9, 13.0, 5.8), spring_painter,
                   ("x", -22.5), (0, 7.0, 5.0)))
 
@@ -380,12 +384,17 @@ def pack_and_paint(cubes, pal):
 
 GROUPS = [
     # (nome, pivô, pai)
+    # fork: tudo que gira com o guidão, pivô sobre o eixo de direção inclinado
+    # fork_lower: bengalas que deslizam ao longo do garfo com a suspensão
+    # swingarm: balança traseira, gira no pivô para acompanhar a roda
     ("motocross", (0, 0, 0), None),
     ("frame", (0, 0, 0), "motocross"),
     ("body", (0, 0, 0), "motocross"),
-    ("wheel_rear", REAR_AXLE, "motocross"),
-    ("fork", (0, 16.0, -9.0), "motocross"),
-    ("wheel_front", FRONT_AXLE, "fork"),
+    ("swingarm", SWINGARM_PIVOT, "motocross"),
+    ("wheel_rear", REAR_AXLE, "swingarm"),
+    ("fork", STEER_PIVOT, "motocross"),
+    ("fork_lower", FRONT_AXLE, "fork"),
+    ("wheel_front", FRONT_AXLE, "fork_lower"),
 ]
 
 

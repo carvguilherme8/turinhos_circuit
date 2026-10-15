@@ -34,14 +34,16 @@
 
 | Ação | Teclado | Controle |
 |---|---|---|
-| Acelerar | W / ↑ | RT |
-| Frear / ré | S / ↓ | LT |
-| Virar | A, D / ←, → | Analógico esquerdo |
-| Inclinar frente/trás (no ar e no chão) | I / K | Analógico direito ↕ |
+| Acelerar | W | RT |
+| Frear / ré | S | LT |
+| Virar | A, D | Analógico esquerdo |
+| Freio de mão (derrapagem) | Espaço | A |
+| Peso do piloto: frente/trás (chão: empinar/levantar traseira; ar: girar) | ↑ / ↓ | Analógico direito ↕ |
+| Peso do piloto: lados (ar: whip) | ← / → | Analógico direito ↔ |
 | Reposicionar moto | R | Y |
 | Pausar | Esc | Start |
 
-> Os controles são registrados em `scripts/core/game_input.gd`. A tecla de inclinação no teclado ainda está em aberto (ver perguntas abertas).
+> Os controles são registrados em `scripts/core/game_input.gd`. Mão esquerda pilota (WASD), mão direita controla o corpo do piloto (setas).
 
 ## 5. A moto (física)
 
@@ -95,7 +97,7 @@ Multiplayer online, modo carreira completo, editor de pistas para o jogador, per
 
 ## 12. Perguntas abertas
 
-- [ ] Inclinação no teclado: I/K, Shift/Ctrl ou setas (deixando WASD para dirigir)?
+- [x] Inclinação no teclado: setas (WASD para dirigir).
 - [ ] Haverá *boost*/nitro, ou só técnica de pouso?
 - [ ] Manobras (tricks) no ar valem pontos ou ficam fora?
 - [ ] Quantas pistas na primeira versão "completa"? (sugestão: 3)

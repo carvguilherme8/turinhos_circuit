@@ -1,12 +1,25 @@
 class_name Bike
 extends RigidBody3D
-## Moto arcade: suspensão por raycast em cada roda, motor/freio/direção e torque de equilíbrio.
+## Moto arcade: suspensão por raycast em cada roda, motor/freio/direção, torque de equilíbrio
+## e peso do piloto (wheelie, levantar a traseira, giro e whip no ar).
 ## A frente da moto é -Z (padrão do Godot).
 
 @export var stats: BikeStats
-## Nós visuais das rodas: seguem a suspensão e giram com a velocidade.
+
+@export_group("Visual")
+## Rodas: giram com a velocidade.
 @export var front_wheel: Node3D
 @export var rear_wheel: Node3D
+## Conjunto do guidão (gira em torno do eixo de direção inclinado).
+@export var steering: Node3D
+## Bengalas do garfo: deslizam ao longo do garfo com a suspensão dianteira.
+@export var fork_slider: Node3D
+## Balança traseira: gira no pivô acompanhando a suspensão traseira.
+@export var swingarm: Node3D
+## Inclinação do garfo no modelo (graus para trás).
+@export var fork_rake_degrees: float = 22.5
+@export var handlebar_angle_low_speed: float = 30.0
+@export var handlebar_angle_high_speed: float = 10.0
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
@@ -18,9 +31,22 @@ var drift_amount: float = 0.0
 var drift_angle: float = 0.0
 
 var _steer: float = 0.0
+var _throttle: float = 0.0
+## Peso do piloto: +1 = todo para trás (empinar), -1 = todo para frente.
+var _rider_pitch: float = 0.0
+## Peso do piloto para os lados: +1 = direita.
+var _rider_side: float = 0.0
 var _ground_normal: Vector3 = Vector3.UP
 var _flat_velocity: Vector3 = Vector3.ZERO
 var _spawn_transform: Transform3D
+
+## Altura do centro de cada roda no espaço da moto (calculada pela suspensão).
+var _front_wheel_y: float = 0.0
+var _rear_wheel_y: float = 0.0
+var _front_wheel_rest_y: float = 0.0
+var _rear_wheel_rest_y: float = 0.0
+var _fork_slider_rest: Vector3
+var _swingarm_length: float = 0.5
 
 @onready var _front_ray: RayCast3D = $FrontWheelRay
 @onready var _rear_ray: RayCast3D = $RearWheelRay
@@ -39,6 +65,14 @@ func _ready() -> void:
 	_rear_ray.target_position = Vector3(0.0, -ray_length, 0.0)
 	_spawn_transform = global_transform
 
+	# Posições de repouso do modelo, para animar a suspensão a partir delas.
+	_front_wheel_rest_y = to_local(front_wheel.global_position).y
+	_rear_wheel_rest_y = to_local(rear_wheel.global_position).y
+	_front_wheel_y = _front_wheel_rest_y
+	_rear_wheel_y = _rear_wheel_rest_y
+	_fork_slider_rest = fork_slider.position
+	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
+
 
 func is_grounded() -> bool:
 	return front_grounded or rear_grounded
@@ -56,14 +90,17 @@ func _physics_process(delta: float) -> void:
 		reset_to_spawn()
 		return
 
-	front_grounded = _apply_suspension(_front_ray, front_wheel)
-	rear_grounded = _apply_suspension(_rear_ray, rear_wheel)
+	front_grounded = _apply_suspension(_front_ray, true)
+	rear_grounded = _apply_suspension(_rear_ray, false)
 	_ground_normal = _average_ground_normal()
 
 	var throttle := Input.get_action_strength("acelerar")
 	var brake := Input.get_action_strength("frear")
 	var steer_input := Input.get_axis("esquerda", "direita")
 	var handbrake := Input.is_action_pressed("freio_mao") and is_grounded()
+	_throttle = throttle
+	_rider_pitch = Input.get_axis("inclinar_frente", "inclinar_tras")
+	_rider_side = Input.get_axis("inclinar_esquerda", "inclinar_direita")
 	var drift_rate := 10.0 if handbrake else stats.drift_recovery
 	drift_amount = move_toward(drift_amount, 1.0 if handbrake else 0.0, drift_rate * delta)
 	_steer = move_toward(_steer, steer_input, stats.steer_response * delta)
@@ -81,13 +118,13 @@ func _physics_process(delta: float) -> void:
 
 
 ## Mola + amortecedor numa roda. Retorna true se a roda está tocando o chão.
-func _apply_suspension(ray: RayCast3D, wheel: Node3D) -> bool:
+func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
 	# Sem isso o raio usaria a posição do passo anterior e mediria errado em alta velocidade.
 	ray.force_raycast_update()
 	var up := global_basis.y
 	if not ray.is_colliding():
-		wheel.global_position = ray.global_position - up * stats.suspension_rest_length
+		_set_wheel_height(is_front, ray.position.y - stats.suspension_rest_length)
 		return false
 
 	var origin := ray.global_position
@@ -101,8 +138,15 @@ func _apply_suspension(ray: RayCast3D, wheel: Node3D) -> bool:
 	var force := clampf(spring + damper, 0.0, stats.max_suspension_force)
 	apply_force(up * force, origin - global_position)
 
-	wheel.global_position = origin - up * (distance - stats.wheel_radius)
+	_set_wheel_height(is_front, ray.position.y - (distance - stats.wheel_radius))
 	return true
+
+
+func _set_wheel_height(is_front: bool, height: float) -> void:
+	if is_front:
+		_front_wheel_y = height
+	else:
+		_rear_wheel_y = height
 
 
 func _average_ground_normal() -> Vector3:
@@ -155,7 +199,7 @@ func _apply_grip(forward: Vector3, delta: float) -> void:
 	linear_velocity -= right * lateral * clampf(grip * delta, 0.0, 1.0)
 
 
-## Guinada pela direção e rolagem corrigida para a moto ficar em pé.
+## Guinada pela direção, peso do piloto e rolagem corrigida para a moto ficar em pé.
 func _steer_and_balance(forward: Vector3, delta: float) -> void:
 	var av := angular_velocity
 
@@ -177,13 +221,16 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 				target_yaw = 0.0
 		var yaw := av.dot(_ground_normal)
 		av += _ground_normal * (target_yaw - yaw) * clampf(stats.steer_response * delta, 0.0, 1.0)
+		av = _rider_weight_ground(av, delta)
 	else:
-		var up := global_basis.y
-		av -= up * av.dot(up) * clampf(stats.air_yaw_damping * delta, 0.0, 1.0)
+		av = _rider_weight_air(av, delta)
 
 	# Equilíbrio: só no eixo de rolagem (o pitch fica livre para suspensão e saltos).
+	# No ar, o whip deita a moto para o lado do comando.
 	var roll_axis := -global_basis.z
-	var target_up := _ground_normal if is_grounded() else Vector3.UP
+	var target_up := _ground_normal
+	if not is_grounded():
+		target_up = Vector3.UP.rotated(roll_axis, _rider_side * deg_to_rad(stats.whip_roll_angle))
 	var target_up_flat := target_up - roll_axis * target_up.dot(roll_axis)
 	if target_up_flat.length_squared() > 0.0001:
 		var roll_error := global_basis.y.signed_angle_to(target_up_flat.normalized(), roll_axis)
@@ -192,11 +239,64 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 	angular_velocity = av
 
 
+## No chão: peso para trás empina (wheelie), peso para frente levanta a traseira.
+## Sem comando, o pitch fica por conta da suspensão.
+func _rider_weight_ground(av: Vector3, delta: float) -> Vector3:
+	if absf(_rider_pitch) < 0.05:
+		return av
+	var target := 0.0
+	if _rider_pitch > 0.0:
+		var throttle_share := lerpf(stats.wheelie_without_throttle, 1.0, _throttle)
+		target = deg_to_rad(stats.wheelie_angle) * _rider_pitch * throttle_share
+	else:
+		target = deg_to_rad(stats.stoppie_angle) * _rider_pitch
+	var pitch_axis := global_basis.x
+	var pitch := asin(clampf((-global_basis.z).dot(_ground_normal), -1.0, 1.0))
+	# O comando define a velocidade de pitch direto (vence a mola e a gravidade a cada passo).
+	var target_rate := (target - pitch) * stats.ground_pitch_response
+	return av + pitch_axis * (target_rate - av.dot(pitch_axis))
+
+
+## No ar: peso frente/trás gira a moto (pitch); para os lados faz o whip, jogando a traseira.
+## Sem comando, a moto mantém o giro que trouxe da rampa e alinha a frente com o salto.
+func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
+	var pitch_axis := global_basis.x
+	if absf(_rider_pitch) > 0.05:
+		var rate := av.dot(pitch_axis)
+		var target_rate := _rider_pitch * stats.air_pitch_rate
+		av += pitch_axis * (target_rate - rate) * clampf(stats.air_pitch_response * delta, 0.0, 1.0)
+
+	var velocity_flat := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var forward_flat := Vector3(-global_basis.z.x, 0.0, -global_basis.z.z)
+	if velocity_flat.length() > 2.0 and forward_flat.length() > 0.2:
+		# Whip para a direita: frente vira para a direita, traseira sai para a esquerda.
+		var whip := -_rider_side * deg_to_rad(stats.whip_yaw_angle)
+		var desired := velocity_flat.normalized().rotated(Vector3.UP, whip)
+		var yaw_error := forward_flat.normalized().signed_angle_to(desired, Vector3.UP)
+		var yaw_rate := av.dot(Vector3.UP)
+		av += Vector3.UP * (yaw_error * stats.air_yaw_align - yaw_rate) * clampf(5.0 * delta, 0.0, 1.0)
+	return av
+
+
 func _update_visuals(delta: float) -> void:
 	var speed_ratio := clampf(absf(forward_speed) / stats.max_speed, 0.0, 1.0)
 	var lean_degrees := stats.visual_lean_degrees * (1.0 + 0.4 * drift_amount)
 	var lean := -_steer * deg_to_rad(lean_degrees) * speed_ratio if is_grounded() else 0.0
 	_visual.rotation.z = lerp_angle(_visual.rotation.z, lean, clampf(8.0 * delta, 0.0, 1.0))
+
+	# Guidão: gira em torno do eixo de direção inclinado; esterça menos em alta velocidade.
+	var rake := deg_to_rad(fork_rake_degrees)
+	var steer_axis := Vector3(0.0, cos(rake), sin(rake))
+	var bar_angle := lerpf(handlebar_angle_low_speed, handlebar_angle_high_speed, speed_ratio)
+	steering.basis = Basis(steer_axis, -_steer * deg_to_rad(bar_angle))
+
+	# Suspensão dianteira: as bengalas deslizam ao longo do garfo.
+	var front_travel := clampf(_front_wheel_y - _front_wheel_rest_y, -0.3, 0.4)
+	fork_slider.position = _fork_slider_rest + steer_axis * (front_travel / cos(rake))
+
+	# Suspensão traseira: a balança gira no pivô até a roda chegar à altura certa.
+	var rear_travel := clampf(_rear_wheel_y - _rear_wheel_rest_y, -0.3, 0.4)
+	swingarm.rotation.x = -asin(clampf(rear_travel / _swingarm_length, -0.9, 0.9))
 
 	var spin := -forward_speed / stats.wheel_radius * delta
 	front_wheel.rotate_x(spin)

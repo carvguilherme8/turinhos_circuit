@@ -3,12 +3,15 @@ extends Node
 ## Assim o mapa de entradas fica legível no Git, em vez de espalhado no project.godot.
 
 const ACTIONS := {
-	"acelerar": [KEY_W, KEY_UP],
-	"frear": [KEY_S, KEY_DOWN],
-	"esquerda": [KEY_A, KEY_LEFT],
-	"direita": [KEY_D, KEY_RIGHT],
-	"inclinar_frente": [KEY_I],
-	"inclinar_tras": [KEY_K],
+	# Mão esquerda pilota (WASD); mão direita joga o peso do piloto (setas).
+	"acelerar": [KEY_W],
+	"frear": [KEY_S],
+	"esquerda": [KEY_A],
+	"direita": [KEY_D],
+	"inclinar_frente": [KEY_UP],
+	"inclinar_tras": [KEY_DOWN],
+	"inclinar_esquerda": [KEY_LEFT],
+	"inclinar_direita": [KEY_RIGHT],
 	"freio_mao": [KEY_SPACE],
 	"resetar_moto": [KEY_R],
 	"pausar": [KEY_ESCAPE],
@@ -41,6 +44,8 @@ func _ready() -> void:
 	_add_axis("direita", JOY_AXIS_LEFT_X, 1.0)
 	_add_axis("inclinar_frente", JOY_AXIS_RIGHT_Y, -1.0)
 	_add_axis("inclinar_tras", JOY_AXIS_RIGHT_Y, 1.0)
+	_add_axis("inclinar_esquerda", JOY_AXIS_RIGHT_X, -1.0)
+	_add_axis("inclinar_direita", JOY_AXIS_RIGHT_X, 1.0)
 
 
 func _add_axis(action: String, axis: JoyAxis, value: float) -> void:

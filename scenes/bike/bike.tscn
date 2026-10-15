@@ -10,7 +10,7 @@ friction = 0.3
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(0.5, 0.75, 1.7)
 
-[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel")]
+[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm")]
 mass = 150.0
 physics_material_override = SubResource("PhysicsMaterial_body")
 gravity_scale = 1.6
@@ -18,8 +18,11 @@ can_sleep = false
 continuous_cd = true
 script = ExtResource("1_bike")
 stats = ExtResource("2_stats")
-front_wheel = NodePath("Visual/Model/motocross/fork/wheel_front")
-rear_wheel = NodePath("Visual/Model/motocross/wheel_rear")
+front_wheel = NodePath("Visual/Model/motocross/fork/fork_lower/wheel_front")
+rear_wheel = NodePath("Visual/Model/motocross/swingarm/wheel_rear")
+steering = NodePath("Visual/Model/motocross/fork")
+fork_slider = NodePath("Visual/Model/motocross/fork/fork_lower")
+swingarm = NodePath("Visual/Model/motocross/swingarm")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
