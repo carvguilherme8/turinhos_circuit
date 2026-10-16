@@ -6,8 +6,8 @@ extends RigidBody3D
 
 ## Emitido ao pousar de um salto (não emitido em queda).
 signal landed(quality: Landing, angle: float)
-## Pousou depois de mortais: nome ("BACKFLIP"/"FRONTFLIP") e quantas voltas.
-signal trick_landed(trick: String, count: int)
+## Pousou depois de manobras: nomes na ordem (ex.: ["SUPERMAN", "BACKFLIP"]).
+signal tricks_landed(names: PackedStringArray)
 ## Emitido quando a moto cai; ela volta para a pista após stats.respawn_delay.
 signal crashed
 signal respawned
@@ -82,6 +82,10 @@ var is_crashed: bool = false
 var last_crash_reason: String = ""
 ## Giro acumulado no ar em torno do eixo lateral (graus, + = para trás) e tempo segurando o comando.
 var air_rotation: float = 0.0
+## Manobras de estilo completadas neste salto (RiderTricks preenche) e quanto da pose
+## da manobra atual está aplicada (0..1; pousar acima de 0,5 é queda).
+var air_tricks: PackedStringArray = PackedStringArray()
+var trick_amount: float = 0.0
 var _air_spin_hold: float = 0.0
 var _last_forward: Vector3 = Vector3.FORWARD
 
@@ -305,6 +309,7 @@ func _track_air_and_landing(delta: float) -> void:
 	if not is_grounded():
 		if air_time == 0.0:
 			air_rotation = 0.0
+			air_tricks.clear()
 		else:
 			# Giro acumulado em torno do eixo lateral da moto (+ = nariz para cima / para trás).
 			air_rotation += rad_to_deg(_last_forward.signed_angle_to(forward, global_basis.x))
@@ -331,6 +336,9 @@ func _track_air_and_landing(delta: float) -> void:
 ## pousar inclinado junto com a rampa de descida conta como alinhado.
 func _evaluate_landing() -> void:
 	var angle := rad_to_deg(global_basis.y.angle_to(_ground_normal))
+	if trick_amount > 0.5:
+		_crash("pousou no meio da manobra")
+		return
 	if angle > stats.crash_landing_angle or global_basis.y.dot(Vector3.UP) < 0.0:
 		_crash("pouso torto demais %d°" % angle)
 		return
@@ -342,21 +350,26 @@ func _evaluate_landing() -> void:
 		linear_velocity += forward * boost
 		_dust_burst = 0.3
 		landed.emit(Landing.PERFECT, angle)
-		_report_flips()
+		_report_tricks()
 	else:
 		var t := inverse_lerp(stats.good_landing_angle, stats.crash_landing_angle, angle)
 		linear_velocity *= lerpf(stats.rough_landing_keep_best, stats.rough_landing_keep_worst, t)
 		_dust_burst = 0.45
 		landed.emit(Landing.ROUGH, angle)
-		_report_flips()
+		_report_tricks()
 
 
-## Pousou depois de girar uma volta completa ou mais: avisa o mortal.
-func _report_flips() -> void:
+## Pousou: avisa as manobras do salto (estilo + mortais) numa lista só.
+func _report_tricks() -> void:
+	var names := PackedStringArray(air_tricks)
 	var turns := floori((absf(air_rotation) + 360.0 - stats.flip_min_degrees) / 360.0)
 	if turns >= 1:
-		trick_landed.emit("BACKFLIP" if air_rotation > 0.0 else "FRONTFLIP", turns)
+		var flip := "BACKFLIP" if air_rotation > 0.0 else "FRONTFLIP"
+		names.append(flip if turns == 1 else ("DOUBLE " + flip if turns == 2 else "%dx %s" % [turns, flip]))
+	if not names.is_empty():
+		tricks_landed.emit(names)
 	air_rotation = 0.0
+	air_tricks.clear()
 
 
 func _crash(reason: String = "") -> void:
@@ -680,8 +693,9 @@ func _update_visuals(delta: float) -> void:
 	var rear_travel := clampf(_rear_wheel_y - _rear_wheel_rest_y, -0.3, 0.4)
 	swingarm.rotation.x = -asin(clampf(rear_travel / _swingarm_length, -0.9, 0.9))
 
-	if rider_upper:
+	if rider_upper and trick_amount <= 0.0:
 		# Inclina a partir da pose do modelo (o tronco já vem inclinado para frente).
+		# Durante uma manobra quem move o tronco é a animação.
 		var lean_back := _rider_upper_rest_x + _rider_pitch * deg_to_rad(rider_lean_degrees)
 		rider_upper.rotation.x = lerp_angle(rider_upper.rotation.x, lean_back, clampf(10.0 * delta, 0.0, 1.0))
 

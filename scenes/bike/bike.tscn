@@ -1,9 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
 [ext_resource type="PackedScene" path="res://assets/models/bikes/motocross/motocross.glb" id="3_model"]
 [ext_resource type="PackedScene" path="res://assets/models/riders/rider/rider.glb" id="4_rider"]
+[ext_resource type="AnimationLibrary" path="res://assets/models/riders/rider/rider_tricks.tres" id="5_tricks"]
+[ext_resource type="Script" path="res://scripts/bike/rider_tricks.gd" id="6_tricks_script"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
@@ -113,3 +115,13 @@ local_coords = false
 visibility_aabb = AABB(-8, -3, -3, 16, 8, 20)
 process_material = SubResource("ParticleProcess_dust")
 draw_pass_1 = SubResource("BoxMesh_dust")
+
+[node name="TrickAnimations" type="AnimationPlayer" parent="Visual/Rider"]
+libraries = {
+&"tricks": ExtResource("5_tricks")
+}
+
+[node name="RiderTricks" type="Node" parent="." node_paths=PackedStringArray("bike", "animation_player")]
+script = ExtResource("6_tricks_script")
+bike = NodePath("..")
+animation_player = NodePath("../Visual/Rider/TrickAnimations")

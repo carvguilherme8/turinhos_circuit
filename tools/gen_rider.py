@@ -317,6 +317,129 @@ def report_fit():
     print("  topo do capacete", fmt(top))
 
 
+# ---------------------------------------------------------------- manobras (animações)
+
+# Pose de cada manobra: rotação extra de cada osso (graus x, y, z, aplicada no espaço do pai,
+# por cima da pose de pilotagem) e deslocamento do corpo inteiro (unidades do modelo).
+TRICKS = {
+    # Q: perna esquerda chutada para fora, tronco compensa para a direita, olhando a perna.
+    "can_can_esquerda": {
+        "leg_l": (15, 0, -78),
+        "upper": (0, 0, -10),
+        "head": (0, 22, 0),
+    },
+    # E: o espelho.
+    "can_can_direita": {
+        "leg_r": (15, 0, 78),
+        "upper": (0, 0, 10),
+        "head": (0, -22, 0),
+    },
+    # X: solta os pés, corpo sobe e vai para trás, pernas esticadas para trás (voando).
+    "superman": {
+        "leg_r": (-100, 0, 10),
+        "leg_l": (-100, 0, -10),
+        "upper": (-25, 0, 0),
+        "arm_r": (-25, 0, 0),
+        "arm_l": (-25, 0, 0),
+        "head": (20, 0, 0),
+        "@root": (0.0, 4.0, 5.0),
+    },
+}
+TRICK_LENGTH = 0.3
+
+
+def _fmt(values):
+    return ", ".join(("%.5f" % v).rstrip("0").rstrip(".") if abs(v) > 1e-9 else "0" for v in values)
+
+
+def write_trick_library(path):
+    """AnimationLibrary com as manobras (pose de pilotagem -> pose da manobra) e o RESET."""
+    bones = [g for g in GROUPS if g[2] is not None]
+    rest = {g[0]: gm.euler_to_quat(g[3]) for g in bones}
+    scale = 1.0 / 16.0
+
+    def rotation_track(index, bone, keys):
+        flat = []
+        for t, q in keys:
+            flat += [t, 1.0] + list(q)
+        return [
+            f'tracks/{index}/type = "rotation_3d"',
+            f"tracks/{index}/imported = false",
+            f"tracks/{index}/enabled = true",
+            f'tracks/{index}/path = NodePath("rider/{bone}")',
+            f"tracks/{index}/interp = 1",
+            f"tracks/{index}/loop_wrap = true",
+            f"tracks/{index}/keys = PackedFloat32Array({_fmt(flat)})",
+        ]
+
+    def position_track(index, keys):
+        flat = []
+        for t, p in keys:
+            flat += [t, 1.0] + list(p)
+        return [
+            f'tracks/{index}/type = "position_3d"',
+            f"tracks/{index}/imported = false",
+            f"tracks/{index}/enabled = true",
+            'tracks/%d/path = NodePath("rider")' % index,
+            f"tracks/{index}/interp = 1",
+            f"tracks/{index}/loop_wrap = true",
+            f"tracks/{index}/keys = PackedFloat32Array({_fmt(flat)})",
+        ]
+
+    def slerp(a, b, t):
+        dot = sum(x * y for x, y in zip(a, b))
+        if dot < 0:
+            b, dot = [-x for x in b], -dot
+        if dot > 0.9995:
+            r = [x + (y - x) * t for x, y in zip(a, b)]
+        else:
+            th = math.acos(dot)
+            s0, s1 = math.sin((1 - t) * th) / math.sin(th), math.sin(t * th) / math.sin(th)
+            r = [x * s0 + y * s1 for x, y in zip(a, b)]
+        n = math.sqrt(sum(x * x for x in r))
+        return [x / n for x in r]
+
+    resources = []
+    names = []
+    # RESET: pose de pilotagem.
+    lines = ['[sub_resource type="Animation" id="Animation_RESET"]', 'resource_name = "RESET"', "length = 0.001"]
+    i = 0
+    for g in bones:
+        lines += rotation_track(i, g[0], [(0.0, rest[g[0]])])
+        i += 1
+    lines += position_track(i, [(0.0, (0.0, 0.0, 0.0))])
+    resources.append("\n".join(lines))
+    names.append("RESET")
+
+    for name, pose in TRICKS.items():
+        lines = [f'[sub_resource type="Animation" id="Animation_{name}"]', f'resource_name = "{name}"',
+                 f"length = {TRICK_LENGTH}"]
+        i = 0
+        for bone, offset in pose.items():
+            if bone == "@root":
+                end = tuple(v * scale for v in offset)
+                mid = tuple(v * 0.75 for v in end)
+                lines += position_track(i, [(0.0, (0.0, 0.0, 0.0)), (TRICK_LENGTH * 0.5, mid), (TRICK_LENGTH, end)])
+            else:
+                start = rest[bone]
+                end = gm.quat_mul(gm.euler_to_quat(offset), start)
+                # Sai rápido e chega devagar (75% do caminho na metade do tempo).
+                mid = slerp(start, end, 0.75)
+                lines += rotation_track(i, bone, [(0.0, start), (TRICK_LENGTH * 0.5, mid), (TRICK_LENGTH, end)])
+            i += 1
+        resources.append("\n".join(lines))
+        names.append(name)
+
+    out = [f'[gd_resource type="AnimationLibrary" load_steps={len(resources) + 1} format=3]', ""]
+    out += [r + "\n" for r in resources]
+    out.append("[resource]")
+    out.append("_data = {")
+    out.append(",\n".join(f'&"{n}": SubResource("Animation_{n}")' for n in names))
+    out.append("}")
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(out) + "\n")
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser()
@@ -340,6 +463,7 @@ def main():
     if not args.texture_only:
         gm.write_bbmodel(cubes, img, os.path.join(args.out, args.name + ".bbmodel"), args.name, GROUPS)
         gm.write_glb(cubes, img, os.path.join(args.out, args.name + ".glb"), args.name, GROUPS)
+        write_trick_library(os.path.join(args.out, args.name + "_tricks.tres"))
     print(f"{len(cubes)} cubos, textura {img.width}x{img.height} -> {os.path.normpath(args.out)}")
     report_fit()
 
