@@ -377,9 +377,10 @@ track = NodePath("../../Track")
 pace = 0.91
 line_offset = 0.0
 
-[node name="RaceManager" type="Node" parent="." node_paths=PackedStringArray("track", "player", "bikes")]
+[node name="RaceManager" type="Node" parent="." node_paths=PackedStringArray("track", "player", "bikes", "ramps")]
 script = ExtResource("race_manager")
 track = NodePath("../Track")
+ramps = NodePath("../Ramps")
 player = NodePath("../Bike")
 bikes = [NodePath("../Bot3"), NodePath("../Bot5"), NodePath("../Bot7"), NodePath("../Bike")]
 names = PackedStringArray("Bot #3", "Bot #5", "Bot #7", "Você #8")

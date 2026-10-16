@@ -9,6 +9,9 @@ signal landed(quality: Landing, angle: float)
 ## Emitido quando a moto cai; ela volta para a pista após stats.respawn_delay.
 signal crashed
 signal respawned
+## Pedido de volta para a pista (R, queda, bot travado). Se alguém (a corrida) estiver
+## ligado neste sinal, ele decide onde pôr a moto; senão, volta ao último ponto seguro.
+signal recover_requested
 
 enum Landing { PERFECT, ROUGH }
 
@@ -178,7 +181,18 @@ func place_at(spot: Transform3D) -> void:
 	_steer = 0.0
 	drift_amount = 0.0
 	air_time = 0.0
+	is_crashed = false
+	_reset_one_wheel()
 	respawned.emit()
+
+
+## Volta para a pista: quem estiver ligado em recover_requested decide onde (a corrida sabe
+## onde ficam a pista e os saltos); sem ninguém, usa o último ponto seguro.
+func request_recover() -> void:
+	if recover_requested.get_connections().is_empty():
+		respawn()
+	else:
+		recover_requested.emit()
 
 
 ## Volta para o último ponto seguro (ou para o início, se não houver nenhum).
@@ -218,11 +232,14 @@ func _physics_process(delta: float) -> void:
 		_update_visuals(delta)
 		_update_dust(delta)
 		if _crash_timer <= 0.0:
-			respawn(SAFE_POINT_MIN_AGE)
+			if recover_requested.get_connections().is_empty():
+				respawn(SAFE_POINT_MIN_AGE)
+			else:
+				recover_requested.emit()
 		return
 
 	if player_controlled and controls_enabled and Input.is_action_just_pressed("resetar_moto"):
-		respawn()
+		request_recover()
 		return
 
 	_track_air_and_landing(delta)

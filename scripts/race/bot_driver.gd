@@ -41,7 +41,7 @@ func _physics_process(delta: float) -> void:
 	if absf(speed) < 1.0 and bike.is_grounded():
 		_stuck_time += delta
 		if _stuck_time > 2.5:
-			bike.respawn()
+			bike.request_recover()
 			_stuck_time = 0.0
 	else:
 		_stuck_time = 0.0

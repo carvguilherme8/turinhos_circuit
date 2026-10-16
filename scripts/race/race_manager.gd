@@ -3,6 +3,8 @@ extends Node
 ## Corrida: monta o grid atrás da linha de chegada, faz a contagem regressiva, acompanha cada
 ## moto ao longo da pista (voltas e posição) e encerra quando o jogador completa as voltas.
 ## A ação "reiniciar_corrida" recarrega a cena (corrida do zero, marcas de pneu apagadas).
+## Também decide para onde a moto volta (R, queda, fora da pista, bot travado): para a pista
+## no último ponto válido ou, se ela parou no vão de um salto, para antes dele com embalo.
 
 signal countdown_changed(value: int)  ## 3, 2, 1 e 0 (= VAI!)
 signal race_started
@@ -25,6 +27,10 @@ enum State { COUNTDOWN, RACING, FINISHED }
 @export var off_track_margin: float = 2.0
 ## Tempo fora da pista até a moto ser recolocada.
 @export var off_track_time: float = 0.6
+## Nó com as rampas da pista (para achar os saltos com vão entre kicker e pouso).
+@export var ramps: Node
+## Distância livre antes de um salto ao voltar para ele (embalo suficiente para passar).
+@export var runup_meters: float = 32.0
 
 var state: State = State.COUNTDOWN
 var race_time: float = 0.0
@@ -34,6 +40,9 @@ var entries: Array[Dictionary] = []
 var _finish_order: Array[Dictionary] = []
 var _countdown: float = 0.0
 var _last_count: int = -1
+## Trechos ocupados por rampas e saltos com vão, em índices da linha central: [início, fim].
+var _ramp_spans: Array[Vector2i] = []
+var _jump_spans: Array[Vector2i] = []
 
 
 func _ready() -> void:
@@ -53,6 +62,8 @@ func _ready() -> void:
 			"time": 0.0,
 			"off_time": 0.0,
 		})
+		bike.recover_requested.connect(_recover.bind(entries[-1]))
+	_map_ramps()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -93,7 +104,7 @@ func _track_progress(entry: Dictionary, delta: float) -> void:
 	if hint >= 0 and not bike.is_crashed 			and flat.distance_to(track.point_at(index)) > track.track_width * 0.5 + off_track_margin:
 		entry["off_time"] += delta
 		if entry["off_time"] > off_track_time:
-			_put_back_on_track(entry)
+			_recover(entry)
 		return
 	entry["off_time"] = 0.0
 	entry["index"] = index
@@ -153,13 +164,99 @@ func lap_of(bike: Bike) -> int:
 	return 1
 
 
-func _put_back_on_track(entry: Dictionary) -> void:
-	var i: int = entry["index"] - 8
-	var p := track.point_at(i)
-	var t := track.tangent_at(i)
+# ---------------------------------------------------------------- volta para a pista
+
+## Põe a moto de volta na pista: no último ponto válido (um pouco atrás) ou, se ela parou
+## no vão de um salto, antes dele com embalo suficiente para passar.
+func _recover(entry: Dictionary) -> void:
+	var bike: Bike = entry["bike"]
+	var index: int = entry["index"]
+	if index < 0:
+		index = track.closest_index(bike.global_position)
+	var target := index - 4
+	for span in _jump_spans:
+		if _span_contains(span, index):
+			target = _runup_start(span.x)
+			break
+	target = posmod(target, track.centerline.size())
+	var p := track.point_at(target)
+	var t := track.tangent_at(target)
 	var basis := Basis.looking_at(Vector3(t.x, 0.0, t.y), Vector3.UP)
-	(entry["bike"] as Bike).place_at(Transform3D(basis, Vector3(p.x, 0.8, p.y)))
+	bike.place_at(Transform3D(basis, Vector3(p.x, _ground_height(p) + 0.75, p.y)))
+	entry["index"] = target
 	entry["off_time"] = 0.0
+
+
+## Volta `runup_meters` antes de `start`; se houver outra rampa nesse trecho, volta para antes
+## dela também (nunca reaparece em cima de uma rampa nem sem espaço para embalar).
+func _runup_start(start: int) -> int:
+	var n := track.centerline.size()
+	var runup := int(runup_meters / 0.5)
+	var target := start
+	for _attempt in 10:
+		var candidate := target - runup
+		var blocked := false
+		for span in _ramp_spans:
+			if span.x == target:
+				continue
+			# A rampa começa ou termina dentro de [candidato, alvo)?
+			var from_candidate := posmod(span.x - candidate, n)
+			var end_from_candidate := posmod(span.y - candidate, n)
+			if from_candidate < runup or end_from_candidate < runup:
+				target = span.x
+				blocked = true
+				break
+		if not blocked:
+			return candidate
+	return target - runup
+
+
+func _span_contains(span: Vector2i, index: int) -> bool:
+	var n := track.centerline.size()
+	return posmod(index - span.x, n) <= posmod(span.y - span.x, n)
+
+
+## Descobre onde cada rampa fica ao longo da pista e quais pares kicker + pouso formam um salto.
+func _map_ramps() -> void:
+	_ramp_spans.clear()
+	_jump_spans.clear()
+	if ramps == null:
+		return
+	var n := track.centerline.size()
+	var kickers: Array[Vector2i] = []
+	var landings: Array[Vector2i] = []
+	for child in ramps.get_children():
+		var ramp := child as Ramp
+		if ramp == null:
+			continue
+		var extent := ramp.world_extent()
+		var span := Vector2i(track.closest_index(extent[0]), track.closest_index(extent[1]))
+		_ramp_spans.append(span)
+		if ramp.is_kicker():
+			kickers.append(span)
+		elif ramp.is_landing():
+			landings.append(span)
+	for kicker in kickers:
+		var best := -1
+		var best_gap := n
+		for i in landings.size():
+			var gap := posmod(landings[i].x - kicker.y, n)
+			if gap < best_gap and gap < 80:  # pouso até ~40 m depois do kicker
+				best_gap = gap
+				best = i
+		if best >= 0:
+			_jump_spans.append(Vector2i(kicker.x, landings[best].y))
+
+
+func _ground_height(p: Vector2) -> float:
+	var space := track.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 40.0, p.y), Vector3(p.x, -5.0, p.y), 1 | 2)
+	var exclude: Array[RID] = []
+	for bike in bikes:
+		exclude.append(bike.get_rid())
+	query.exclude = exclude
+	var hit := space.intersect_ray(query)
+	return hit["position"].y if hit else 0.0
 
 
 ## Grid em fileiras de duas motos, atrás da linha de chegada.

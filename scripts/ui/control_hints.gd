@@ -3,7 +3,7 @@ extends Label
 ## mostra; a escolha fica salva em user://settings.cfg para a próxima vez.
 
 const SETTINGS_PATH := "user://settings.cfg"
-const HINTS := """WASD pilotar · Espaço freio de mão · R volta ao ponto seguro
+const HINTS := """WASD pilotar · Espaço freio de mão · R volta para a pista
 Setas = peso do piloto: ↓ empina · ↑ levanta a traseira · no ar giram · ←/→ whip
 C troca a câmera · Backspace reinicia a corrida · H esconde as dicas"""
 const COLLAPSED := "H: dicas"

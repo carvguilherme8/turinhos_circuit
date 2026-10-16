@@ -76,6 +76,25 @@ func _ready() -> void:
 	_rebuild()
 
 
+## Kicker: termina sem topo nem descida própria (o pouso é outra rampa, depois do vão).
+func is_kicker() -> bool:
+	return down_length < 0.01 and top_length < 0.01
+
+
+## Rampa de pouso: começa direto no alto (a face de subida é só a "parede" íngreme).
+func is_landing() -> bool:
+	return up_length < 0.01
+
+
+## Pontos de início e fim da rampa no mundo (no chão, no sentido de quem passa por ela).
+func world_extent() -> PackedVector3Array:
+	var profile := build_profile()
+	return PackedVector3Array([
+		global_transform * Vector3(0.0, 0.0, profile[0].y),
+		global_transform * Vector3(0.0, 0.0, profile[profile.size() - 1].y),
+	])
+
+
 ## Perfil arredondado em (y, z), começando e terminando no chão (y = 0).
 func build_profile() -> PackedVector2Array:
 	var face := maxf(up_length, height * steep_face_ratio)
