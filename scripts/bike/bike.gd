@@ -53,8 +53,9 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export var first_person_camera: Camera3D
 ## Poeira da roda traseira (a intensidade vem de velocidade, aceleração, derrapagem e pousos).
 @export var rear_dust: GPUParticles3D
-## Boneco físico que substitui o piloto numa queda.
-@export var ragdoll: RiderRagdoll
+## Boneco físico que substitui o piloto numa queda (nó com rider_ragdoll.gd).
+## Tipado como Node para a moto não depender do registro da classe no editor.
+@export var ragdoll: Node
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
