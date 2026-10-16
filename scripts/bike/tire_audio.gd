@@ -16,8 +16,8 @@ extends Node3D
 @export var attack_rate: float = 8.0
 @export var release_rate: float = 2.5
 ## Altura do som (1 = como foi gravado): abaixo de 1 fica mais grave, mais "lama".
-@export var roll_pitch: Vector2 = Vector2(0.7, 0.9)  # parado, velocidade máxima
-@export var slide_pitch: Vector2 = Vector2(0.75, 0.88)
+@export var roll_pitch: Vector2 = Vector2(0.78, 1.0)  # parado, velocidade máxima
+@export var slide_pitch: Vector2 = Vector2(0.82, 0.98)
 ## Duração do espirro de lama num pouso (s).
 @export var landing_splash: float = 0.35
 @export var bot_unit_size: float = 6.0

@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -37,6 +37,9 @@
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_beep.wav" id="sfx_beep"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_go.wav" id="sfx_go"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/stadium_crowd.ogg" id="sfx_crowd"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/crowd_cheer_1.ogg" id="sfx_cheer_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/crowd_cheer_2.ogg" id="sfx_cheer_2"]
+[ext_resource type="Script" path="res://scripts/race/crowd_audio.gd" id="crowd_audio"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
@@ -399,7 +402,10 @@ mouse_filter = 2
 script = ExtResource("race_hud")
 race = NodePath("../../RaceManager")
 
-[node name="CrowdAmbience" type="AudioStreamPlayer" parent="."]
+[node name="CrowdAmbience" type="AudioStreamPlayer" parent="." node_paths=PackedStringArray("bike")]
 stream = ExtResource("sfx_crowd")
-volume_db = -16.0
+volume_db = -11.0
 autoplay = true
+script = ExtResource("crowd_audio")
+bike = NodePath("../Bike")
+cheer_streams = Array[AudioStream]([ExtResource("sfx_cheer_1"), ExtResource("sfx_cheer_2")])

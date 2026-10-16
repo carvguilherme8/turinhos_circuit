@@ -25,9 +25,9 @@ LOOPS = [
     ("mud_slide.wav", 12.8, 3.6, 0.4),
 ]
 # Abaixo disto é quase só o motor do carro (Hz).
-HIGHPASS_HZ = 160.0
+HIGHPASS_HZ = 220.0
 # Acima disto os agudos vão sendo abafados (Hz; 12 dB por oitava).
-LOWPASS_HZ = 1100.0
+LOWPASS_HZ = 2200.0
 
 
 def shape(samples):
