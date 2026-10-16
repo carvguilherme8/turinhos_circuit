@@ -6,6 +6,8 @@ extends RigidBody3D
 
 ## Emitido ao pousar de um salto (não emitido em queda).
 signal landed(quality: Landing, angle: float)
+## Pousou depois de mortais: nome ("BACKFLIP"/"FRONTFLIP") e quantas voltas.
+signal trick_landed(trick: String, count: int)
 ## Emitido quando a moto cai; ela volta para a pista após stats.respawn_delay.
 signal crashed
 signal respawned
@@ -76,6 +78,12 @@ var rear_contact: Vector3 = Vector3.ZERO
 ## 0..1: quanto o pneu traseiro está arrastando (derrapagem ou freada forte).
 var skid: float = 0.0
 var is_crashed: bool = false
+## Motivo da última queda (para depuração e ajuste fino).
+var last_crash_reason: String = ""
+## Giro acumulado no ar em torno do eixo lateral (graus, + = para trás) e tempo segurando o comando.
+var air_rotation: float = 0.0
+var _air_spin_hold: float = 0.0
+var _last_forward: Vector3 = Vector3.FORWARD
 
 var _crash_timer: float = 0.0
 var _clock: float = 0.0
@@ -293,23 +301,30 @@ func _physics_process(delta: float) -> void:
 
 ## Conta o tempo no ar, avalia o pouso e detecta queda pela carenagem.
 func _track_air_and_landing(delta: float) -> void:
+	var forward := -global_basis.z
 	if not is_grounded():
+		if air_time == 0.0:
+			air_rotation = 0.0
+		else:
+			# Giro acumulado em torno do eixo lateral da moto (+ = nariz para cima / para trás).
+			air_rotation += rad_to_deg(_last_forward.signed_angle_to(forward, global_basis.x))
 		air_time += delta
 	elif air_time > 0.0:
 		if air_time >= stats.min_air_time:
 			_evaluate_landing()
 		air_time = 0.0
+	_last_forward = forward
 
 	if not is_crashed and get_contact_count() > 0:
 		var tilt := rad_to_deg(global_basis.y.angle_to(Vector3.UP))
 		if tilt > stats.crash_tilt_angle:
-			_crash()
+			_crash("encostou tombada %d°" % tilt)
 
 	# Wheelie ou traseira no alto além do limite: a moto vira.
 	var one_wheel_degrees := rad_to_deg(_one_wheel_angle)
 	if not is_crashed and (one_wheel_degrees > stats.wheelie_crash_angle
 			or one_wheel_degrees < -stats.stoppie_crash_angle):
-		_crash()
+		_crash("passou do ponto numa roda só %d°" % one_wheel_degrees)
 
 
 ## Compara o "para cima" da moto com a normal do chão onde ela tocou:
@@ -317,7 +332,7 @@ func _track_air_and_landing(delta: float) -> void:
 func _evaluate_landing() -> void:
 	var angle := rad_to_deg(global_basis.y.angle_to(_ground_normal))
 	if angle > stats.crash_landing_angle or global_basis.y.dot(Vector3.UP) < 0.0:
-		_crash()
+		_crash("pouso torto demais %d°" % angle)
 		return
 
 	if angle <= stats.good_landing_angle:
@@ -327,14 +342,25 @@ func _evaluate_landing() -> void:
 		linear_velocity += forward * boost
 		_dust_burst = 0.3
 		landed.emit(Landing.PERFECT, angle)
+		_report_flips()
 	else:
 		var t := inverse_lerp(stats.good_landing_angle, stats.crash_landing_angle, angle)
 		linear_velocity *= lerpf(stats.rough_landing_keep_best, stats.rough_landing_keep_worst, t)
 		_dust_burst = 0.45
 		landed.emit(Landing.ROUGH, angle)
+		_report_flips()
 
 
-func _crash() -> void:
+## Pousou depois de girar uma volta completa ou mais: avisa o mortal.
+func _report_flips() -> void:
+	var turns := floori((absf(air_rotation) + 360.0 - stats.flip_min_degrees) / 360.0)
+	if turns >= 1:
+		trick_landed.emit("BACKFLIP" if air_rotation > 0.0 else "FRONTFLIP", turns)
+	air_rotation = 0.0
+
+
+func _crash(reason: String = "") -> void:
+	last_crash_reason = reason
 	_dust_burst = 0.5
 	if not is_zero_approx(_visual_pitch):
 		global_transform = global_transform * _one_wheel_transform(_visual_pitch, _visual_rest)
@@ -501,7 +527,10 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 	if not is_grounded():
 		target_up = Vector3.UP.rotated(roll_axis, _rider_side * deg_to_rad(stats.whip_roll_angle))
 	var target_up_flat := target_up - roll_axis * target_up.dot(roll_axis)
-	if target_up_flat.length_squared() > 0.0001:
+	# No meio de um mortal (moto muito fora do normal) não corrige a rolagem: senão ela
+	# "desviraria" de lado em vez de completar o giro.
+	var flipping := not is_grounded() and global_basis.y.y < 0.35
+	if target_up_flat.length_squared() > 0.0001 and not flipping:
 		var roll_error := global_basis.y.signed_angle_to(target_up_flat.normalized(), roll_axis)
 		av += roll_axis * (roll_error * stats.roll_stiffness - av.dot(roll_axis))
 
@@ -572,18 +601,26 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	var pitch_axis := global_basis.x
 	var rate := av.dot(pitch_axis)
 	if absf(_rider_pitch) > 0.05:
-		var target_rate := _rider_pitch * stats.air_pitch_rate
+		# Toques curtos giram devagar (ajuste do pouso); segurando, acelera até o mortal.
+		_air_spin_hold += delta
+		var spin := lerpf(stats.air_pitch_rate, stats.air_flip_rate,
+				clampf(_air_spin_hold / stats.air_flip_spinup, 0.0, 1.0))
+		var target_rate := _rider_pitch * spin
 		av += pitch_axis * (target_rate - rate) * clampf(stats.air_pitch_response * delta, 0.0, 1.0)
-	elif stats.air_pitch_assist > 0.0 and linear_velocity.length() > 3.0:
+	else:
+		_air_spin_hold = 0.0
+	if absf(_rider_pitch) <= 0.05 and stats.air_pitch_assist > 0.0 and linear_velocity.length() > 3.0:
 		# Assistente: o nariz segue a trajetória, como um dardo.
 		var velocity := linear_velocity - pitch_axis * linear_velocity.dot(pitch_axis)
 		var error := (-global_basis.z).signed_angle_to(velocity, pitch_axis)
 		var target_rate := error * stats.air_pitch_assist
-		av += pitch_axis * (target_rate - rate) * clampf(2.0 * delta, 0.0, 1.0)
+		# Girando rápido (soltou no meio de um mortal): freia forte; giro lento: suave.
+		var blend := lerpf(2.0, stats.air_release_brake, clampf((absf(rate) - 2.0) / 3.0, 0.0, 1.0))
+		av += pitch_axis * (target_rate - rate) * clampf(blend * delta, 0.0, 1.0)
 
 	var velocity_flat := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
 	var forward_flat := Vector3(-global_basis.z.x, 0.0, -global_basis.z.z)
-	if velocity_flat.length() > 2.0 and forward_flat.length() > 0.2:
+	if velocity_flat.length() > 2.0 and forward_flat.length() > 0.2 and global_basis.y.y > 0.35:
 		# Whip para a direita: frente vira para a direita, traseira sai para a esquerda.
 		var whip := -_rider_side * deg_to_rad(stats.whip_yaw_angle)
 		var desired := velocity_flat.normalized().rotated(Vector3.UP, whip)

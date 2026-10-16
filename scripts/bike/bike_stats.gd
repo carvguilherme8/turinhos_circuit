@@ -75,8 +75,17 @@ extends Resource
 @export_range(20.0, 90.0, 1.0, "suffix:°") var stoppie_crash_angle: float = 55.0
 ## Velocidade de giro (pitch) no ar com o analógico/seta no máximo.
 @export_range(0.5, 10.0, 0.1, "suffix:rad/s") var air_pitch_rate: float = 3.5
+## Segurando o comando no ar, o giro acelera até esta velocidade (mortais).
+@export_range(0.5, 20.0, 0.1, "suffix:rad/s") var air_flip_rate: float = 10.0
+## Tempo segurando até chegar à velocidade do mortal (toques curtos giram devagar).
+@export_range(0.05, 2.0, 0.05, "suffix:s") var air_flip_spinup: float = 0.3
 ## Rapidez com que o giro no ar responde ao comando.
-@export_range(0.5, 20.0, 0.5) var air_pitch_response: float = 5.0
+@export_range(0.5, 20.0, 0.5) var air_pitch_response: float = 8.0
+## Ao soltar o comando com a moto girando rápido, o giro freia com esta força (desistir
+## de um mortal no meio fica controlável). Giro lento usa o assistente normal.
+@export_range(0.5, 20.0, 0.5) var air_release_brake: float = 6.0
+## Giro mínimo para contar uma volta completa (mortal) ao pousar.
+@export_range(180.0, 360.0, 5.0, "suffix:°") var flip_min_degrees: float = 300.0
 ## Assistente: numa roda só (cristas, costelas), sem comando, alinha a moto com o chão.
 @export_range(0.0, 10.0, 0.1) var one_wheel_pitch_assist: float = 3.0
 ## Assistente: no ar, sem comando, o nariz acompanha a trajetória (0 = desligado).

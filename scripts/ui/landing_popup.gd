@@ -13,6 +13,7 @@ func _ready() -> void:
 	if bike:
 		bike.landed.connect(_on_landed)
 		bike.crashed.connect(_on_crashed)
+		bike.trick_landed.connect(_on_trick)
 
 
 func _process(delta: float) -> void:
@@ -27,6 +28,11 @@ func _on_landed(quality: Bike.Landing, angle: float) -> void:
 		_show("POUSO PERFEITO!", Color("7dff7a"))
 	else:
 		_show("Pouso torto (%d°)" % roundi(angle), Color("ffd24a"))
+
+
+func _on_trick(trick: String, count: int) -> void:
+	var prefix := "" if count == 1 else ("DOUBLE " if count == 2 else "%dx " % count)
+	_show("%s%s!" % [prefix, trick], Color("6fe3ff"))
 
 
 func _on_crashed() -> void:
