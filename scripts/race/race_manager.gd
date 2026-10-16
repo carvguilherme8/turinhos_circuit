@@ -31,6 +31,9 @@ enum State { COUNTDOWN, RACING, FINISHED }
 @export var ramps: Node
 ## Distância livre antes de um salto ao voltar para ele (embalo suficiente para passar).
 @export var runup_meters: float = 32.0
+## Sons da largada: bipe do 3-2-1 e do "VAI!".
+@export var countdown_sound: AudioStream
+@export var go_sound: AudioStream
 
 var state: State = State.COUNTDOWN
 var race_time: float = 0.0
@@ -43,10 +46,14 @@ var _last_count: int = -1
 ## Trechos ocupados por rampas e saltos com vão, em índices da linha central: [início, fim].
 var _ramp_spans: Array[Vector2i] = []
 var _jump_spans: Array[Vector2i] = []
+var _start_audio: AudioStreamPlayer
 
 
 func _ready() -> void:
 	_countdown = countdown_seconds
+	_start_audio = AudioStreamPlayer.new()
+	_start_audio.volume_db = -4.0
+	add_child(_start_audio)
 	for i in bikes.size():
 		var bike := bikes[i]
 		bike.controls_enabled = false
@@ -66,6 +73,13 @@ func _ready() -> void:
 	_map_ramps()
 
 
+func _play_start_sound(is_count: bool) -> void:
+	var sound := countdown_sound if is_count else go_sound
+	if sound:
+		_start_audio.stream = sound
+		_start_audio.play()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reiniciar_corrida"):
 		get_viewport().set_input_as_handled()
@@ -83,6 +97,7 @@ func _physics_process(delta: float) -> void:
 		if count != _last_count:
 			_last_count = count
 			countdown_changed.emit(maxi(count, 0))
+			_play_start_sound(count > 0)
 		if _countdown <= 0.0:
 			state = State.RACING
 			for bike in bikes:

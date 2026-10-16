@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3]
+[gd_scene load_steps=40 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -34,6 +34,8 @@
 [ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_5.png" id="tex_rider_5"]
 [ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_7.png" id="tex_bike_7"]
 [ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_7.png" id="tex_rider_7"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_beep.wav" id="sfx_beep"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_go.wav" id="sfx_go"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
@@ -381,6 +383,8 @@ line_offset = 0.0
 script = ExtResource("race_manager")
 track = NodePath("../Track")
 ramps = NodePath("../Ramps")
+countdown_sound = ExtResource("sfx_beep")
+go_sound = ExtResource("sfx_go")
 player = NodePath("../Bike")
 bikes = [NodePath("../Bot3"), NodePath("../Bot5"), NodePath("../Bot7"), NodePath("../Bike")]
 names = PackedStringArray("Bot #3", "Bot #5", "Bot #7", "Você #8")
