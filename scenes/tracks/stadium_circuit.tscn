@@ -258,22 +258,22 @@ width = 8
 material = ExtResource("dirt_track")
 
 [node name="D_Kicker" type="StaticBody3D" parent="Ramps"]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, -28)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, -18)
 script = ExtResource("ramp")
 up_length = 7
 top_length = 0
 down_length = 0
-height = 2.4
+height = 3.9
 width = 8
 material = ExtResource("dirt_track")
 
 [node name="D_Pouso" type="StaticBody3D" parent="Ramps"]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, -10)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 21, 0, 1)
 script = ExtResource("ramp")
 up_length = 0
-top_length = 1.5
-down_length = 10
-height = 2.4
+top_length = 1
+down_length = 13
+height = 2.6
 width = 8
 material = ExtResource("dirt_track")
 

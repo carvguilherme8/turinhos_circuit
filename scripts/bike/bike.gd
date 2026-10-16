@@ -603,8 +603,9 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	if absf(_rider_pitch) > 0.05:
 		# Toques curtos giram devagar (ajuste do pouso); segurando, acelera até o mortal.
 		_air_spin_hold += delta
+		# Curva em S: o giro cresce suave, sem tranco.
 		var spin := lerpf(stats.air_pitch_rate, stats.air_flip_rate,
-				clampf(_air_spin_hold / stats.air_flip_spinup, 0.0, 1.0))
+				smoothstep(0.0, stats.air_flip_spinup, _air_spin_hold))
 		var target_rate := _rider_pitch * spin
 		av += pitch_axis * (target_rate - rate) * clampf(stats.air_pitch_response * delta, 0.0, 1.0)
 	else:
