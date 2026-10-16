@@ -3,6 +3,11 @@ extends Node
 ## Ragdoll do piloto: na queda, o piloto preso à moto some e no lugar dele surge um boneco
 ## físico (cabeça, tronco, braços e pernas como corpos rígidos ligados por juntas), na mesma
 ## pose e com a velocidade da moto. Some quando a moto volta para a pista.
+## Também dá ao piloto montado áreas de contato (cabeça e tronco): encostar no cenário
+## avisa `hit_scenery` (a moto cai). Outras motos e bonecos são ignorados.
+
+## O piloto montado encostou a cabeça ou o tronco no cenário.
+signal hit_scenery(part: String)
 
 ## Camadas de colisão: 1 = chão/obstáculos, 2 = ondulações, 3 = motos, 4 = ragdolls.
 const RAGDOLL_LAYER := 1 << 3
@@ -15,6 +20,8 @@ const RAGDOLL_MASK := 1 | 2
 ## Empurrão extra ao ser arremessado (m/s para cima e fração da velocidade para frente).
 @export var launch_up: float = 2.5
 @export var launch_forward: float = 0.25
+## Partes do piloto montado que derrubam a moto ao encostar no cenário.
+@export var hit_parts: PackedStringArray = PackedStringArray(["head", "upper"])
 
 ## Peças: [osso, pai (para a junta), centro da caixa e tamanho no espaço do osso (unidades), massa].
 const PARTS := [
@@ -27,6 +34,51 @@ const PARTS := [
 ]
 
 var _root: Node3D
+
+
+## Partes do piloto montado testadas contra o cenário: [osso, caixa, centro no osso].
+var _hitboxes: Array = []
+var _query := PhysicsShapeQueryParameters3D.new()
+
+
+func _ready() -> void:
+	_add_hitboxes()
+
+
+## Caixas de contato presas aos ossos do piloto montado (acompanham pose, wheelie e manobras).
+## São testadas com consultas diretas à física a cada passo (áreas não enxergam corpos
+## estáticos no Jolt, o motor de física do projeto).
+func _add_hitboxes() -> void:
+	_hitboxes.clear()
+	if rider == null:
+		return
+	for part in PARTS:
+		if not hit_parts.has(part[0]):
+			continue
+		var bone := rider.find_child(part[0], true, false) as Node3D
+		if bone == null:
+			continue
+		var box := BoxShape3D.new()
+		box.size = part[3] * unit * rider_scale
+		_hitboxes.append([bone, box, part[2] * unit, part[0]])
+	_query.collision_mask = RAGDOLL_MASK  # só o cenário: chão, rampas, blocos e muro
+	_query.collide_with_areas = false
+
+
+func _physics_process(_delta: float) -> void:
+	# Vale também com o piloto invisível (câmera do guidão); durante o ragdoll não testa.
+	if is_active() or _hitboxes.is_empty():
+		return
+	var space := rider.get_world_3d().direct_space_state
+	for hitbox in _hitboxes:
+		var bone: Node3D = hitbox[0]
+		var spot := bone.global_transform
+		var basis := spot.basis.orthonormalized()
+		_query.shape = hitbox[1]
+		_query.transform = Transform3D(basis, spot * hitbox[2])
+		if not space.intersect_shape(_query, 1).is_empty():
+			hit_scenery.emit(hitbox[3])
+			return
 
 
 func is_active() -> bool:

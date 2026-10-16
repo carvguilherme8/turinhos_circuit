@@ -164,6 +164,8 @@ func _ready() -> void:
 	collision_layer = 1 << 2
 	collision_mask = 1 | 2 | (1 << 2)
 	_spawn_transform = global_transform
+	if ragdoll:
+		ragdoll.connect("hit_scenery", _on_rider_hit_scenery)
 
 	# Posições de repouso do modelo, para animar a suspensão a partir delas.
 	_front_wheel_rest_y = to_local(front_wheel.global_position).y
@@ -400,6 +402,12 @@ func _report_tricks() -> void:
 		tricks_landed.emit(names)
 	air_rotation = 0.0
 	air_tricks.clear()
+
+
+## Cabeça ou tronco do piloto encostou no cenário: queda.
+func _on_rider_hit_scenery(part: String) -> void:
+	if not is_crashed:
+		_crash("piloto bateu %s no cenário" % ("a cabeça" if part == "head" else "o corpo"))
 
 
 func _crash(reason: String = "") -> void:
