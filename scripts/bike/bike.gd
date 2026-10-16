@@ -181,6 +181,11 @@ func _ready() -> void:
 	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
 
 
+## Acelerador aplicado neste passo (0..1), para o som do motor.
+func throttle() -> float:
+	return _throttle
+
+
 func is_grounded() -> bool:
 	return front_grounded or rear_grounded
 

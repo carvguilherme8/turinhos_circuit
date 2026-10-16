@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
@@ -7,6 +7,9 @@
 [ext_resource type="AnimationLibrary" path="res://assets/models/riders/rider/rider_tricks.tres" id="5_tricks"]
 [ext_resource type="Script" path="res://scripts/bike/rider_tricks.gd" id="6_tricks_script"]
 [ext_resource type="Script" path="res://scripts/bike/rider_ragdoll.gd" id="7_ragdoll"]
+[ext_resource type="Script" path="res://scripts/bike/engine_audio.gd" id="8_engine_audio"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/engine_on.wav" id="9_engine_on"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/engine_off.wav" id="10_engine_off"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
@@ -131,3 +134,9 @@ animation_player = NodePath("../Visual/Rider/TrickAnimations")
 [node name="RiderRagdoll" type="Node" parent="." node_paths=PackedStringArray("rider")]
 script = ExtResource("7_ragdoll")
 rider = NodePath("../Visual/Rider")
+
+[node name="EngineAudio" type="Node3D" parent="." node_paths=PackedStringArray("bike")]
+script = ExtResource("8_engine_audio")
+bike = NodePath("..")
+on_stream = ExtResource("9_engine_on")
+off_stream = ExtResource("10_engine_off")
