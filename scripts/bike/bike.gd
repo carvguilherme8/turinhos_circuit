@@ -19,6 +19,8 @@ enum Landing { PERFECT, ROUGH }
 
 ## Pontos seguros guardados para reposicionar (mais antigos são descartados).
 const SAFE_POINT_INTERVAL := 0.5
+const PlayerProfile := preload("res://scripts/core/player_profile.gd")
+const SkinPainter := preload("res://scripts/bike/skin_painter.gd")
 const SAFE_POINT_COUNT := 12
 ## Na queda, volta para um ponto seguro de pelo menos este tempo antes.
 const SAFE_POINT_MIN_AGE := 2.0
@@ -28,6 +30,8 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export var player_controlled: bool = true
 ## Cores: texturas alternativas da moto e do piloto (mesma UV do modelo). Vazio = padrão.
 @export var bike_texture: Texture2D
+## A moto do jogador usa o visual escolhido no menu (número, uniforme e cor da moto).
+@export var use_player_profile: bool = true
 @export var rider_texture: Texture2D
 
 @export_group("Visual")
@@ -176,9 +180,23 @@ func _ready() -> void:
 	_visual_rest = _visual.position
 	_apply_skin($Visual/Model, bike_texture)
 	_apply_skin($Visual/Rider, rider_texture)
+	if player_controlled and use_player_profile:
+		apply_player_profile()
+		PlayerProfile.listen(apply_player_profile)
 	if rider_upper:
 		_rider_upper_rest_x = rider_upper.rotation.x
 	_swingarm_length = Vector2(rear_wheel.position.y, rear_wheel.position.z).length()
+
+
+## Repinta moto e piloto com o visual do jogador (menu de customização).
+func apply_player_profile() -> void:
+	if not is_inside_tree():
+		return
+	PlayerProfile.ensure_loaded()
+	bike_texture = SkinPainter.bike_texture(PlayerProfile.bike_color(), PlayerProfile.number)
+	rider_texture = SkinPainter.rider_texture(PlayerProfile.suit_color(), PlayerProfile.accent_color(), PlayerProfile.number)
+	_apply_skin($Visual/Model, bike_texture)
+	_apply_skin($Visual/Rider, rider_texture)
 
 
 ## Acelerador aplicado neste passo (0..1), para o som do motor.
