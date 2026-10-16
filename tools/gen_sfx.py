@@ -3,6 +3,9 @@
 Saída: assets/audio/sfx/
   countdown_beep.wav  bipe curto e grave (3, 2, 1)
   countdown_go.wav    bipe longo e agudo (VAI!)
+  ui_move.wav         tique curto ao navegar pelo menu
+  ui_select.wav       dois bipes subindo (confirmar)
+  ui_back.wav         dois bipes descendo (voltar / fechar)
 
 Uso: python tools/gen_sfx.py
 """
@@ -28,6 +31,14 @@ def tone(freq, seconds, volume=0.5, attack=0.005, release=0.06):
     return out
 
 
+def blips(freqs, step, volume=0.3):
+    """Sequência de bipes curtos e emendados, com o fim de cada um amortecido."""
+    out = []
+    for f in freqs:
+        out += tone(f, step, volume=volume, attack=0.003, release=step * 0.6)
+    return out
+
+
 def save(name, samples):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name)
@@ -44,6 +55,9 @@ def main():
     # "VAI!": uma oitava acima e mais longo.
     go = tone(1320.0, 0.75, volume=0.55, release=0.25)
     save("countdown_go.wav", go)
+    save("ui_move.wav", tone(1046.5, 0.045, volume=0.22, attack=0.002, release=0.035))
+    save("ui_select.wav", blips([784.0, 1174.7], 0.07))
+    save("ui_back.wav", blips([880.0, 587.3], 0.07))
 
 
 if __name__ == "__main__":

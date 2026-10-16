@@ -6,6 +6,10 @@ extends CanvasLayer
 ## (a moto do jogador se repinta na hora).
 
 const PlayerProfile := preload("res://scripts/core/player_profile.gd")
+## Sons do menu: mover entre opções, confirmar e voltar.
+const SFX_MOVE := preload("res://assets/audio/sfx/ui_move.wav")
+const SFX_SELECT := preload("res://assets/audio/sfx/ui_select.wav")
+const SFX_BACK := preload("res://assets/audio/sfx/ui_back.wav")
 ## Fonte de toda a interface (vira a fonte padrão do jogo).
 const GAME_FONT := preload("res://assets/fonts/russo_one/RussoOne-Regular.ttf")
 
@@ -36,6 +40,9 @@ var _tween: Tween
 var _title: Label
 var _first_button: Button
 var _starting := false
+var _sfx: AudioStreamPlayer
+## Foco posto pelo próprio menu (ao abrir/trocar de painel): não toca o som de mover.
+var _quiet_focus := false
 
 
 func _ready() -> void:
@@ -43,6 +50,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	ThemeDB.get_default_theme().default_font = GAME_FONT
 	PlayerProfile.ensure_loaded()
+	_sfx = AudioStreamPlayer.new()
+	_sfx.volume_db = -6.0
+	add_child(_sfx)
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.visible = false
@@ -62,10 +72,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	if not _root.visible:
+		_play(SFX_SELECT)
 		open()
 	elif _custom_open:
+		_play(SFX_BACK)
 		_close_custom()
 	elif not _starting:
+		_play(SFX_BACK)
 		close()  # no menu inicial, só "CORRER" sai dele
 
 
@@ -80,7 +93,7 @@ func open(start := false) -> void:
 	_restart_tween()
 	_tween.tween_property(_dim, "modulate:a", 1.0, slide_time)
 	_slide(_main_steps, true, true)
-	_main_steps[1].get_child(0).grab_focus.call_deferred()
+	_focus_quietly.call_deferred(_main_steps[1].get_child(0))
 
 
 func close() -> void:
@@ -109,7 +122,7 @@ func _build_main() -> void:
 		["FECHAR JOGO", func(): get_tree().quit()],
 	]
 	for i in entries.size():
-		var button := _make_button(entries[i][0])
+		var button := _make_button(entries[i][0], 28, i == 2)
 		button.pressed.connect(entries[i][1])
 		_main_steps.append(_add_step(button, i + 1, true, button_size))
 		if i == 0:
@@ -152,18 +165,27 @@ func _build_custom() -> void:
 			func(i): _change(0, 0, i - PlayerProfile.bike_index))
 	_custom_steps.append(_add_step(bike_row, 3, false, row_size))
 
-	var back := _make_button("VOLTAR")
+	var back := _make_button("VOLTAR", 28, true)
 	back.pressed.connect(_close_custom)
 	_custom_steps.append(_add_step(back, 4, false, Vector2(row_size.x * 0.6, button_size.y)))
 
-	var rows: Array = [minus, _suit_buttons[0], _bike_buttons[0], back]
-	for i in rows.size():
-		var control: Control = rows[i]
-		if i > 0:
-			control.focus_neighbor_top = control.get_path_to(rows[i - 1])
-		if i < rows.size() - 1:
-			control.focus_neighbor_bottom = control.get_path_to(rows[i + 1])
-	plus.focus_neighbor_bottom = plus.get_path_to(_suit_buttons[0])
+	# Navegação: para os lados alterna entre as setas e percorre as cores (dando a volta);
+	# para cima e para baixo troca de linha mantendo a coluna.
+	_link_sideways([minus, plus])
+	_link_sideways(_suit_buttons)
+	_link_sideways(_bike_buttons)
+	var last := _suit_buttons.size() - 1
+	_link_vertical(minus, _suit_buttons[0])
+	_link_vertical(plus, _suit_buttons[last])
+	for i in _suit_buttons.size():
+		_suit_buttons[i].focus_neighbor_top = _suit_buttons[i].get_path_to(minus if i < _suit_buttons.size() / 2.0 else plus)
+		_link_vertical(_suit_buttons[i], _bike_buttons[mini(i, _bike_buttons.size() - 1)])
+	for swatch in _bike_buttons:
+		swatch.focus_neighbor_bottom = swatch.get_path_to(back)
+	back.focus_neighbor_top = back.get_path_to(_bike_buttons[0])
+	# VOLTAR é sozinho na linha: para os lados não sai dele.
+	back.focus_neighbor_left = back.get_path_to(back)
+	back.focus_neighbor_right = back.get_path_to(back)
 	_refresh()
 
 
@@ -190,6 +212,7 @@ func _swatch_row(caption: String, count: int, buttons: Array[Button], main: Call
 			line.offset_right = -5.0
 			swatch.add_child(line)
 		swatch.pressed.connect(on_pick.bind(i))
+		_add_sounds(swatch, false)
 		row.add_child(swatch)
 		buttons.append(swatch)
 	return row
@@ -255,7 +278,7 @@ func _open_custom() -> void:
 	_restart_tween()
 	_slide(_main_steps, true, false)
 	_slide(_custom_steps, false, true)
-	_custom_steps[1].get_child(0).get_child(1).grab_focus.call_deferred()
+	_focus_quietly.call_deferred(_custom_steps[1].get_child(0).get_child(1))
 
 
 func _close_custom() -> void:
@@ -265,7 +288,7 @@ func _close_custom() -> void:
 	_restart_tween()
 	_slide(_custom_steps, false, false)
 	_slide(_main_steps, true, true)
-	_main_steps[2].get_child(0).grab_focus.call_deferred()
+	_focus_quietly.call_deferred(_main_steps[2].get_child(0))
 
 
 func _restart_tween() -> void:
@@ -315,7 +338,8 @@ func _make_label(text: String, size: int) -> Label:
 	return label
 
 
-func _make_button(text: String, size: int = 28) -> Button:
+## `back` = botão que volta ou fecha (toca o som de voltar).
+func _make_button(text: String, size: int = 28, back := false) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.flat = false
@@ -332,7 +356,43 @@ func _make_button(text: String, size: int = 28) -> Button:
 		button.add_theme_stylebox_override(state, style)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_focus_color", Color("ffd27a"))
+	_add_sounds(button, back)
 	return button
+
+
+## Som ao passar por um botão (teclado, controle ou mouse) e ao apertá-lo.
+func _add_sounds(button: Button, back: bool) -> void:
+	button.focus_entered.connect(func():
+		if not _quiet_focus:
+			_play(SFX_MOVE))
+	button.mouse_entered.connect(func():
+		if not button.has_focus():
+			_play(SFX_MOVE))
+	button.pressed.connect(func(): _play(SFX_BACK if back else SFX_SELECT))
+
+
+func _play(stream: AudioStream) -> void:
+	_sfx.stream = stream
+	_sfx.play()
+
+
+func _focus_quietly(control: Control) -> void:
+	_quiet_focus = true
+	control.grab_focus()
+	_quiet_focus = false
+
+
+## Esquerda/direita percorre a lista e dá a volta nas pontas.
+func _link_sideways(controls: Array) -> void:
+	for i in controls.size():
+		var control: Control = controls[i]
+		control.focus_neighbor_left = control.get_path_to(controls[(i - 1 + controls.size()) % controls.size()])
+		control.focus_neighbor_right = control.get_path_to(controls[(i + 1) % controls.size()])
+
+
+func _link_vertical(upper: Control, lower: Control) -> void:
+	upper.focus_neighbor_bottom = upper.get_path_to(lower)
+	lower.focus_neighbor_top = lower.get_path_to(upper)
 
 
 func _link_focus(controls: Array) -> void:
