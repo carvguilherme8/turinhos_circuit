@@ -129,6 +129,12 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var rough_landing_keep_worst: float = 0.4
 ## A carenagem encostando em algo com a moto mais tombada que isso é queda.
 @export_range(10.0, 90.0, 1.0, "suffix:°") var crash_tilt_angle: float = 60.0
+## Janela para avaliar o pouso: usa o melhor alinhamento desse intervalo (um raio de roda
+## raspando uma beirada no primeiro instante não condena o pouso).
+@export_range(0.0, 0.5, 0.01, "suffix:s") var landing_window: float = 0.12
+## Tranco que derruba a moto numa queda (rolagem, rad/s) e velocidade que sobra.
+@export_range(0.0, 10.0, 0.1, "suffix:rad/s") var crash_roll_kick: float = 3.5
+@export_range(0.0, 1.0, 0.05) var crash_speed_keep: float = 0.6
 ## Tempo caído antes de voltar para a pista.
 @export_range(0.1, 5.0, 0.1, "suffix:s") var respawn_delay: float = 1.0
 

@@ -86,6 +86,9 @@ var air_rotation: float = 0.0
 ## da manobra atual está aplicada (0..1; pousar acima de 0,5 é queda).
 var air_tricks: PackedStringArray = PackedStringArray()
 var trick_amount: float = 0.0
+## Avaliação do pouso em andamento: tempo desde o toque (-1 = nenhuma) e melhor alinhamento.
+var _landing_timer: float = -1.0
+var _landing_best_angle: float = 180.0
 var _air_spin_hold: float = 0.0
 var _last_forward: Vector3 = Vector3.FORWARD
 
@@ -307,7 +310,7 @@ func _physics_process(delta: float) -> void:
 func _track_air_and_landing(delta: float) -> void:
 	var forward := -global_basis.z
 	if not is_grounded():
-		if air_time == 0.0:
+		if air_time == 0.0 and _landing_timer < 0.0:
 			air_rotation = 0.0
 			air_tricks.clear()
 		else:
@@ -315,10 +318,30 @@ func _track_air_and_landing(delta: float) -> void:
 			air_rotation += rad_to_deg(_last_forward.signed_angle_to(forward, global_basis.x))
 		air_time += delta
 	elif air_time > 0.0:
-		if air_time >= stats.min_air_time:
-			_evaluate_landing()
+		if air_time >= stats.min_air_time and _landing_timer < 0.0:
+			var angle_now := rad_to_deg(global_basis.y.angle_to(_ground_normal))
+			if angle_now <= stats.crash_landing_angle and global_basis.y.dot(Vector3.UP) >= 0.0:
+				_evaluate_landing(angle_now)
+			else:
+				# Parece queda: confirma num instante (pode ter sido só um raio raspando
+				# a beirada ou a face íngreme de uma rampa).
+				_landing_timer = 0.0
+				_landing_best_angle = angle_now
 		air_time = 0.0
 	_last_forward = forward
+	if is_crashed:
+		return
+
+	# Confirmação de queda no pouso: fica com o melhor alinhamento do intervalo.
+	if _landing_timer >= 0.0:
+		if is_grounded():
+			_landing_best_angle = minf(_landing_best_angle, rad_to_deg(global_basis.y.angle_to(_ground_normal)))
+		_landing_timer += delta
+		if (front_grounded and rear_grounded) or _landing_timer >= stats.landing_window:
+			_landing_timer = -1.0
+			_evaluate_landing(_landing_best_angle)
+			if is_crashed:
+				return
 
 	if not is_crashed and get_contact_count() > 0:
 		var tilt := rad_to_deg(global_basis.y.angle_to(Vector3.UP))
@@ -334,8 +357,7 @@ func _track_air_and_landing(delta: float) -> void:
 
 ## Compara o "para cima" da moto com a normal do chão onde ela tocou:
 ## pousar inclinado junto com a rampa de descida conta como alinhado.
-func _evaluate_landing() -> void:
-	var angle := rad_to_deg(global_basis.y.angle_to(_ground_normal))
+func _evaluate_landing(angle: float) -> void:
 	if trick_amount > 0.5:
 		_crash("pousou no meio da manobra")
 		return
@@ -382,6 +404,12 @@ func _crash(reason: String = "") -> void:
 	is_crashed = true
 	_crash_timer = stats.respawn_delay
 	drift_amount = 0.0
+	_landing_timer = -1.0
+	# Tranco que derruba a moto de lado: toda queda é visível (sem isso, uma moto que caiu
+	# em pé só seguia andando até reaparecer).
+	var side := 1.0 if randf() < 0.5 else -1.0
+	angular_velocity += -global_basis.z * side * stats.crash_roll_kick
+	linear_velocity *= stats.crash_speed_keep
 	crashed.emit()
 
 

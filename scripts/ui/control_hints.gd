@@ -5,7 +5,7 @@ extends Label
 const SETTINGS_PATH := "user://settings.cfg"
 const HINTS := """WASD pilotar · Espaço freio de mão · R volta para a pista
 Setas = peso do piloto: ↓ empina · ↑ levanta a traseira · no ar giram (segure: mortal) · ←/→ whip
-No ar: Q/E can-can · X superman (segure; solte antes de pousar)
+No ar: Q/E can-can · F superman (segure; solte antes de pousar)
 C troca a câmera · Backspace reinicia a corrida · H esconde as dicas"""
 const COLLAPSED := "H: dicas"
 

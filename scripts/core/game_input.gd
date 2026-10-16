@@ -19,7 +19,7 @@ const ACTIONS := {
 	"reiniciar_corrida": [KEY_BACKSPACE],
 	"manobra_cancan_esquerda": [KEY_Q],
 	"manobra_cancan_direita": [KEY_E],
-	"manobra_superman": [KEY_X],
+	"manobra_superman": [KEY_F],
 	"pausar": [KEY_ESCAPE],
 }
 
