@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
@@ -10,6 +10,9 @@
 [ext_resource type="Script" path="res://scripts/bike/engine_audio.gd" id="8_engine_audio"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/engine_on.wav" id="9_engine_on"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/engine_off.wav" id="10_engine_off"]
+[ext_resource type="Script" path="res://scripts/bike/tire_audio.gd" id="11_tire_audio"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mud_roll.wav" id="12_mud_roll"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mud_slide.wav" id="13_mud_slide"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
@@ -140,3 +143,9 @@ script = ExtResource("8_engine_audio")
 bike = NodePath("..")
 on_stream = ExtResource("9_engine_on")
 off_stream = ExtResource("10_engine_off")
+
+[node name="TireAudio" type="Node3D" parent="." node_paths=PackedStringArray("bike")]
+script = ExtResource("11_tire_audio")
+bike = NodePath("..")
+roll_stream = ExtResource("12_mud_roll")
+slide_stream = ExtResource("13_mud_slide")
