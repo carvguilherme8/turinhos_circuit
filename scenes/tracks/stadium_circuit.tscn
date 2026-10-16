@@ -1,4 +1,4 @@
-[gd_scene load_steps=40 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -36,6 +36,7 @@
 [ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_7.png" id="tex_rider_7"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_beep.wav" id="sfx_beep"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_go.wav" id="sfx_go"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/stadium_crowd.ogg" id="sfx_crowd"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
@@ -397,3 +398,8 @@ anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("race_hud")
 race = NodePath("../../RaceManager")
+
+[node name="CrowdAmbience" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("sfx_crowd")
+volume_db = -16.0
+autoplay = true

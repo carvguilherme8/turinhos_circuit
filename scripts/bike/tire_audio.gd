@@ -15,6 +15,9 @@ extends Node3D
 ## Rapidez com que o som entra e sai (por segundo).
 @export var attack_rate: float = 8.0
 @export var release_rate: float = 2.5
+## Altura do som (1 = como foi gravado): abaixo de 1 fica mais grave, mais "lama".
+@export var roll_pitch: Vector2 = Vector2(0.7, 0.9)  # parado, velocidade máxima
+@export var slide_pitch: Vector2 = Vector2(0.75, 0.88)
 ## Duração do espirro de lama num pouso (s).
 @export var landing_splash: float = 0.35
 @export var bot_unit_size: float = 6.0
@@ -78,8 +81,8 @@ func _physics_process(delta: float) -> void:
 	_slide_level = _approach(_slide_level, slide_target, delta)
 
 	var speed_ratio := clampf(absf(bike.forward_speed) / bike.stats.max_speed, 0.0, 1.0)
-	_roll.set("pitch_scale", lerpf(0.85, 1.15, speed_ratio))
-	_slide.set("pitch_scale", lerpf(0.9, 1.1, speed_ratio))
+	_roll.set("pitch_scale", lerpf(roll_pitch.x, roll_pitch.y, speed_ratio))
+	_slide.set("pitch_scale", lerpf(slide_pitch.x, slide_pitch.y, speed_ratio))
 	_roll.set("volume_db", roll_volume_db + linear_to_db(maxf(_roll_level, 0.0001)))
 	_slide.set("volume_db", slide_volume_db + linear_to_db(maxf(_slide_level, 0.0001)))
 

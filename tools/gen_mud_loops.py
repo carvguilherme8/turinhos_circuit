@@ -5,7 +5,8 @@ Saída:   assets/audio/sfx/
   mud_roll.wav   pneu rodando na lama (trecho calmo, fica de fundo enquanto anda)
   mud_slide.wav  lama espirrando forte (trecho agressivo, entra na derrapagem)
 
-Os graves (motor do carro) são cortados para não brigar com o som da moto.
+Os graves mais fundos (motor do carro) são cortados para não brigar com o som da moto, e os
+agudos são abafados: lama soa grave e "molhada"; agudo demais lembra cascalho.
 Precisa do ffmpeg (no PATH ou via `pip install imageio-ffmpeg`) para ler o mp3.
 
 Uso: python tools/gen_mud_loops.py
@@ -24,19 +25,22 @@ LOOPS = [
     ("mud_slide.wav", 12.8, 3.6, 0.4),
 ]
 # Abaixo disto é quase só o motor do carro (Hz).
-HIGHPASS_HZ = 280.0
+HIGHPASS_HZ = 160.0
+# Acima disto os agudos vão sendo abafados (Hz; 12 dB por oitava).
+LOWPASS_HZ = 1100.0
 
 
-def highpass(samples, cutoff):
-    """Corta os graves com uma rampa suave de uma oitava (filtro na frequência)."""
+def shape(samples):
+    """Corta os graves (rampa de uma oitava) e abafa os agudos (filtro na frequência)."""
     spectrum = np.fft.rfft(samples)
-    freqs = np.fft.rfftfreq(len(samples), 1.0 / RATE)
-    gain = np.clip(np.log2(np.maximum(freqs, 1.0) / (cutoff / 2.0)), 0.0, 1.0)
-    return np.fft.irfft(spectrum * gain, len(samples))
+    freqs = np.maximum(np.fft.rfftfreq(len(samples), 1.0 / RATE), 1.0)
+    high = np.clip(np.log2(freqs / (HIGHPASS_HZ / 2.0)), 0.0, 1.0)
+    low = 1.0 / (1.0 + (freqs / LOWPASS_HZ) ** 2)
+    return np.fft.irfft(spectrum * high * low, len(samples))
 
 
 def main():
-    samples = highpass(decode(SOURCE), HIGHPASS_HZ)
+    samples = shape(decode(SOURCE))
     for name, start, length, fade in LOOPS:
         save(name, make_loop(samples, start, length, fade))
 
