@@ -53,6 +53,8 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export var first_person_camera: Camera3D
 ## Poeira da roda traseira (a intensidade vem de velocidade, aceleração, derrapagem e pousos).
 @export var rear_dust: GPUParticles3D
+## Boneco físico que substitui o piloto numa queda.
+@export var ragdoll: RiderRagdoll
 
 ## Velocidade para frente (m/s), negativa em ré. Atualizada a cada passo de física.
 var forward_speed: float = 0.0
@@ -88,6 +90,7 @@ var air_tricks: PackedStringArray = PackedStringArray()
 var trick_amount: float = 0.0
 ## Avaliação do pouso em andamento: tempo desde o toque (-1 = nenhuma) e melhor alinhamento.
 var _landing_timer: float = -1.0
+var _rider_hidden_by_crash: bool = false
 var _landing_best_angle: float = 180.0
 var _air_spin_hold: float = 0.0
 var _last_forward: Vector3 = Vector3.FORWARD
@@ -152,11 +155,13 @@ func _ready() -> void:
 	var ray_length := stats.suspension_rest_length + stats.wheel_radius
 	_front_ray.target_position = Vector3(0.0, -ray_length, 0.0)
 	_rear_ray.target_position = Vector3(0.0, -ray_length, 0.0)
-	# Camada 1 = chão e obstáculos; camada 2 = ondulações (costelas). As rodas veem as duas;
-	# o corpo deixa de colidir com as ondulações enquanto desliza.
+	# Camadas: 1 = chão e obstáculos, 2 = ondulações (costelas), 3 = motos, 4 = ragdolls.
+	# As rodas veem só o chão e as ondulações (não confundem outra moto com chão); o corpo
+	# bate no chão, nas ondulações (menos quando desliza) e nas outras motos.
 	_front_ray.collision_mask = 1 | 2
 	_rear_ray.collision_mask = 1 | 2
-	collision_mask = 1 | 2
+	collision_layer = 1 << 2
+	collision_mask = 1 | 2 | (1 << 2)
 	_spawn_transform = global_transform
 
 	# Posições de repouso do modelo, para animar a suspensão a partir delas.
@@ -198,6 +203,7 @@ func place_at(spot: Transform3D) -> void:
 	air_time = 0.0
 	is_crashed = false
 	_reset_one_wheel()
+	_restore_rider()
 	respawned.emit()
 
 
@@ -229,6 +235,7 @@ func respawn(min_age: float = 0.0) -> void:
 	air_time = 0.0
 	is_crashed = false
 	_reset_one_wheel()
+	_restore_rider()
 	respawned.emit()
 
 
@@ -408,9 +415,23 @@ func _crash(reason: String = "") -> void:
 	# Tranco que derruba a moto de lado: toda queda é visível (sem isso, uma moto que caiu
 	# em pé só seguia andando até reaparecer).
 	var side := 1.0 if randf() < 0.5 else -1.0
+	if ragdoll and rider and rider.visible:
+		# O piloto é arremessado com a velocidade que a moto tinha.
+		_rider_hidden_by_crash = true
+		rider.visible = false
+		ragdoll.activate(linear_velocity, angular_velocity)
 	angular_velocity += -global_basis.z * side * stats.crash_roll_kick
 	linear_velocity *= stats.crash_speed_keep
 	crashed.emit()
+
+
+## Tira o boneco físico e devolve o piloto à moto.
+func _restore_rider() -> void:
+	if ragdoll:
+		ragdoll.deactivate()
+	if _rider_hidden_by_crash and rider:
+		rider.visible = true
+	_rider_hidden_by_crash = false
 
 
 ## Guarda de tempos em tempos onde a moto estava bem (nas duas rodas, em pé, em chão quase plano).
@@ -462,7 +483,9 @@ func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 	var spring := compression * stats.spring_stiffness
 	var damper := -point_velocity.dot(up) * stats.spring_damping
 	var force := clampf(spring + damper, 0.0, stats.max_suspension_force)
-	if skimming:
+	if is_crashed:
+		force = 0.0  # caída: sem suspensão, a moto capota sobre a carenagem
+	elif skimming:
 		if is_front:
 			force *= stats.skim_front_support  # frente leve: o piloto tira o peso dela
 		else:

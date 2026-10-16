@@ -136,7 +136,7 @@ extends Resource
 @export_range(0.0, 10.0, 0.1, "suffix:rad/s") var crash_roll_kick: float = 3.5
 @export_range(0.0, 1.0, 0.05) var crash_speed_keep: float = 0.6
 ## Tempo caído antes de voltar para a pista.
-@export_range(0.1, 5.0, 0.1, "suffix:s") var respawn_delay: float = 1.0
+@export_range(0.1, 5.0, 0.1, "suffix:s") var respawn_delay: float = 1.6
 
 @export_group("Suspensão")
 @export_range(0.1, 1.5, 0.01, "suffix:m") var suspension_rest_length: float = 0.45

@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/bike/bike.gd" id="1_bike"]
 [ext_resource type="Resource" path="res://scenes/bike/stats/default_bike_stats.tres" id="2_stats"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/riders/rider/rider.glb" id="4_rider"]
 [ext_resource type="AnimationLibrary" path="res://assets/models/riders/rider/rider_tricks.tres" id="5_tricks"]
 [ext_resource type="Script" path="res://scripts/bike/rider_tricks.gd" id="6_tricks_script"]
+[ext_resource type="Script" path="res://scripts/bike/rider_ragdoll.gd" id="7_ragdoll"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_body"]
 friction = 0.3
@@ -58,7 +59,7 @@ roughness = 1.0
 material = SubResource("Mat_dust")
 size = Vector3(0.09, 0.09, 0.09)
 
-[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm", "rider", "rider_upper", "first_person_camera", "rear_dust")]
+[node name="Bike" type="RigidBody3D" node_paths=PackedStringArray("front_wheel", "rear_wheel", "steering", "fork_slider", "swingarm", "rider", "rider_upper", "first_person_camera", "rear_dust", "ragdoll")]
 mass = 150.0
 physics_material_override = SubResource("PhysicsMaterial_body")
 gravity_scale = 1.6
@@ -75,6 +76,7 @@ rider = NodePath("Visual/Rider")
 rider_upper = NodePath("Visual/Rider/rider/upper")
 first_person_camera = NodePath("Visual/FirstPersonCamera")
 rear_dust = NodePath("RearDust")
+ragdoll = NodePath("RiderRagdoll")
 
 [node name="EngineShape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, -0.15, 0)
@@ -125,3 +127,7 @@ libraries = {
 script = ExtResource("6_tricks_script")
 bike = NodePath("..")
 animation_player = NodePath("../Visual/Rider/TrickAnimations")
+
+[node name="RiderRagdoll" type="Node" parent="." node_paths=PackedStringArray("rider")]
+script = ExtResource("7_ragdoll")
+rider = NodePath("../Visual/Rider")
