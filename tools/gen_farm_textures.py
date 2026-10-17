@@ -5,7 +5,9 @@ Saída: assets/textures/farm/*.png (16 px = 1 m, como as do estádio)
   clay_bank.png  barranco de terra vermelha (taludes e cortes no morro)
   grass.png      grama de pasto com tufos e flores
   fence.png      madeira pintada de branco (cercas)
-  bark.png, leaves.png  tronco e copa das árvores (voxel)
+  bark.png, leaves.png  tronco e copa das árvores (voxel; a copa é tingida por árvore)
+  leaves_tint.png  folhagem clara, tingida por copa
+  rock.png, hay.png, tire.png, canvas.png, barn.png, roof.png, plain.png  objetos do cenário
 
 Uso: python tools/gen_farm_textures.py
 """
@@ -99,6 +101,94 @@ def leaves(seed=25):
     return img
 
 
+def leaves_tint(seed=33):
+    """Folhagem clara e quase sem cor: cada copa é tingida (verdes, ipê amarelo e rosa)."""
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (214, 222, 206), 0.1, rnd)
+    px = img.load()
+    for _ in range(45):
+        px[rnd.randrange(16), rnd.randrange(16)] = shade(rnd.choice([(150, 160, 146), (246, 250, 240)]), rnd.uniform(0.9, 1.1)) + (255,)
+    return img
+
+
+def rock(seed=26):
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (128, 124, 116), 0.1, rnd)
+    px = img.load()
+    for _ in range(30):
+        px[rnd.randrange(16), rnd.randrange(16)] = shade(rnd.choice([(96, 92, 88), (160, 156, 146), (110, 120, 80)]), rnd.uniform(0.9, 1.1)) + (255,)
+    return img
+
+
+def hay(seed=27):
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (214, 182, 92), 0.08, rnd)
+    px = img.load()
+    for _ in range(50):
+        x, y = rnd.randrange(16), rnd.randrange(16)
+        px[x, y] = shade(rnd.choice([(176, 140, 60), (236, 210, 120)]), rnd.uniform(0.9, 1.1)) + (255,)
+    for y in (4, 11):  # cordas
+        for x in range(16):
+            px[x, y] = (120, 92, 50, 255)
+    return img
+
+
+def tire(seed=28):
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (38, 38, 42), 0.08, rnd)
+    px = img.load()
+    for x in range(16):
+        for y in range(0, 16, 4):  # banda de rodagem
+            px[x, (y + x // 2) % 16] = (24, 24, 28, 255)
+    return img
+
+
+def canvas(seed=29):
+    """Lona listrada (tingida por barraca: a cor da listra vem da instância)."""
+    img = Image.new("RGBA", (16, 16))
+    px = img.load()
+    for x in range(16):
+        for y in range(16):
+            px[x, y] = (246, 246, 240, 255) if (x // 4) % 2 == 0 else (200, 200, 196, 255)
+    return img
+
+
+def barn(seed=30):
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (164, 52, 44), 0.07, rnd)
+    px = img.load()
+    for x in range(0, 16, 4):
+        for y in range(16):
+            px[x, y] = (120, 36, 32, 255)
+    return img
+
+
+def roof(seed=31):
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (150, 154, 160), 0.05, rnd)
+    px = img.load()
+    for x in range(0, 16, 3):
+        for y in range(16):
+            px[x, y] = (116, 120, 126, 255)
+    for _ in range(6):
+        px[rnd.randrange(16), rnd.randrange(16)] = (150, 96, 60, 255)  # ferrugem
+    return img
+
+
+def plain(seed=32):
+    """Quase branco com leve ruído: a cor vem da instância (pessoas, bandeiras)."""
+    rnd = random.Random(seed)
+    img = Image.new("RGBA", (16, 16))
+    noisy(img, (236, 236, 236), 0.04, rnd)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     textures = {
@@ -108,6 +198,14 @@ def main():
         "fence": fence(),
         "bark": bark(),
         "leaves": leaves(),
+        "leaves_tint": leaves_tint(),
+        "rock": rock(),
+        "hay": hay(),
+        "tire": tire(),
+        "canvas": canvas(),
+        "barn": barn(),
+        "roof": roof(),
+        "plain": plain(),
     }
     for name, img in textures.items():
         img.save(os.path.join(OUT, name + ".png"))

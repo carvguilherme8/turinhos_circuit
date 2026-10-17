@@ -13,10 +13,19 @@ var _heading: Vector3 = Vector3.FORWARD
 
 
 func _ready() -> void:
-	if target:
-		_heading = _flat_forward(_heading)
-		global_position = _desired_position()
-		look_at(target.global_position + Vector3.UP * look_height)
+	snap()
+	# A corrida põe as motos no grid depois (no _ready dela): ajusta de novo quando tudo
+	# estiver montado, senão a câmera começa onde a moto estava na cena.
+	snap.call_deferred()
+
+
+## Vai direto para trás do alvo, sem a transição suave.
+func snap() -> void:
+	if target == null or not target.is_inside_tree():
+		return
+	_heading = _flat_forward(_heading)
+	global_position = _desired_position()
+	look_at(target.global_position + Vector3.UP * look_height)
 
 
 func _physics_process(delta: float) -> void:

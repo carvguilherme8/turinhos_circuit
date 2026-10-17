@@ -39,26 +39,28 @@ extends StadiumTrack
 @export var jumps: Array[Vector4] = [
 	Vector4(62.6, 22, 2, 1),
 	Vector4(145, 8, 1, 0),
-	Vector4(158.4, 20, 1.7, 2),
+	Vector4(158.4, 22, 1.7, 1),
 	Vector4(248.8, 24, 2.8, 1),
 	Vector4(330.3, 30, 2.4, 2),
 	Vector4(546.6, 26, 2, 2),
 	Vector4(575.4, 26, 2, 2),
 	Vector4(662.6, 22, 2.2, 1),
-	Vector4(723.5, 22, 2, 1),
+	Vector4(734.7, 22, 2, 1),
 ]:
 	set(value):
 		jumps = value
 		_queue_rebuild()
 ## Costelas: (distância do início, quantidade, altura m), uma a cada `whoop_spacing` m.
 @export var whoops: Array[Vector3] = [
-	Vector3(466.6, 11, 0.75),
+	Vector3(466.6, 8, 0.5),
 ]:
 	set(value):
 		whoops = value
 		_queue_rebuild()
 # </layout>
-@export var whoop_spacing: float = 3.0
+## Costelas iguais às do estádio: espaçamento e comprimento de cada uma (m).
+@export var whoop_spacing: float = 3.4
+@export var whoop_length: float = 3.0
 ## Inclinação das curvas (berms): quanto inclina por curvatura e o máximo (subida por metro
 ## de largura; 0,3 = ~17°). O lado de fora da curva fica mais alto.
 @export var bank_gain: float = 3.0
@@ -85,6 +87,13 @@ extends StadiumTrack
 @export var tree_count: int = 140
 @export var tree_seed: int = 7
 
+## Pasta das texturas dos objetos do cenário.
+const PROP_TEXTURES := "res://assets/textures/farm/"
+
+## Pistas já geradas nesta sessão (por configuração): na segunda vez a pista só é remontada
+## a partir daqui, sem recalcular terreno e malhas. Trocar de pista fica quase instantâneo.
+static var _cache := {}
+
 ## Altura da pista em cada ponto da linha central (já com os saltos).
 var heights: PackedFloat32Array = PackedFloat32Array()
 ## Inclinação lateral em cada ponto: altura extra por metro para a direita (berms).
@@ -102,6 +111,10 @@ func _rebuild() -> void:
 	_rebuild_queued = false
 	if _generated:
 		_generated.free()
+	var key := _cache_key()
+	if _cache.has(key):
+		_restore(_cache[key])
+		return
 	_generated = Node3D.new()
 	_generated.name = "_Generated"
 	add_child(_generated)
@@ -125,13 +138,59 @@ func _rebuild() -> void:
 
 	_build_terrain()
 	_build_track_surface()
+	_build_whoops()
 	_build_fences()
 	_build_trees()
+	_build_props()
 	_build_finish()
 	_build_flag_tower()
 	var finish := _generated.get_node_or_null("FinishLine") as Node3D
 	if finish:
 		finish.position.y = height_at(_index_at_distance(finish_distance))
+	_cache[key] = _snapshot()
+
+
+## Todas as propriedades exportadas (desta classe e da StadiumTrack): mudou alguma, gera de novo.
+func _cache_key() -> int:
+	var values := []
+	for prop in get_property_list():
+		if prop.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and prop.usage & PROPERTY_USAGE_STORAGE:
+			values.append(get(prop.name))
+	return str(values).hash()
+
+
+## Guarda o que foi gerado: os nós (como cena empacotada) e os dados da linha central.
+func _snapshot() -> Dictionary:
+	_own_generated(_generated)
+	var packed := PackedScene.new()
+	packed.pack(_generated)
+	return {"scene": packed, "centerline": centerline, "distances": distances, "length": length,
+		"heights": heights, "banks": banks, "coarse": _coarse, "bounds": _bounds,
+		"terrain": _terrain, "cols": _cols, "rows": _rows}
+
+
+## Dono de cada nó gerado = a raiz gerada (para empacotar). As rampas recriam as próprias
+## malhas ao entrar na cena, então os filhos delas ficam de fora.
+func _own_generated(node: Node) -> void:
+	for child in node.get_children():
+		child.owner = _generated
+		if not child is Ramp:
+			_own_generated(child)
+
+
+func _restore(entry: Dictionary) -> void:
+	_generated = (entry["scene"] as PackedScene).instantiate()
+	add_child(_generated)
+	centerline = entry["centerline"]
+	distances = entry["distances"]
+	length = entry["length"]
+	heights = entry["heights"]
+	banks = entry["banks"]
+	_coarse = entry["coarse"]
+	_bounds = entry["bounds"]
+	_terrain = entry["terrain"]
+	_cols = entry["cols"]
+	_rows = entry["rows"]
 
 
 # ---------------------------------------------------------------- linha central e perfil
@@ -189,7 +248,7 @@ func _shape_profile() -> void:
 		heights = smooth
 	for i in n:
 		var d := distances[i]
-		heights[i] += _jump_profile(d) + _whoop_profile(d)
+		heights[i] += _jump_profile(d)
 	_compute_banks()
 
 
@@ -218,9 +277,10 @@ func surface_height(index: int, lateral: float) -> float:
 	return heights[i] + banks[i] * clampf(lateral, -half, half)
 
 
-## Formas dos saltos ao longo do comprimento L (tipo em j.w):
-## 0 lombada; 1 mesa (subida 25%, topo 35%, pouso 40%);
-## 2 double (kicker 25%, queda 8%, buraco 17%, frente do pouso 8%, pouso 42%).
+## Formas dos saltos ao longo do comprimento L (tipo em j.w), com subidas longas para a moto
+## não "bater" no começo da rampa:
+## 0 lombada; 1 mesa (subida 35%, topo 30%, pouso 35%);
+## 2 double (kicker 33%, queda 10%, buraco 10%, frente do pouso 10%, pouso 37%).
 func _jump_profile(d: float) -> float:
 	var total := 0.0
 	for j in jumps:
@@ -233,32 +293,23 @@ func _jump_profile(d: float) -> float:
 			0:
 				total += h * pow(sin(PI * x), 2.0)
 			1:
-				if x < 0.25:
-					total += h * _ease(x / 0.25)
-				elif x < 0.6:
+				if x < 0.35:
+					total += h * _ease(x / 0.35)
+				elif x < 0.65:
 					total += h
 				else:
-					total += h * _ease(1.0 - (x - 0.6) / 0.4)
+					total += h * _ease(1.0 - (x - 0.65) / 0.35)
 			_:
-				if x < 0.25:
-					total += h * _ease(x / 0.25)
-				elif x < 0.33:
-					total += h * _ease(1.0 - (x - 0.25) / 0.08)
-				elif x < 0.5:
+				if x < 0.33:
+					total += h * _ease(x / 0.33)
+				elif x < 0.43:
+					total += h * _ease(1.0 - (x - 0.33) / 0.1)
+				elif x < 0.53:
 					pass
-				elif x < 0.58:
-					total += h * _ease((x - 0.5) / 0.08)
+				elif x < 0.63:
+					total += h * _ease((x - 0.53) / 0.1)
 				else:
-					total += h * _ease(1.0 - (x - 0.58) / 0.42)
-	return total
-
-
-func _whoop_profile(d: float) -> float:
-	var total := 0.0
-	for w in whoops:
-		var x := fposmod(d - w.x, length)
-		if x < w.y * whoop_spacing:
-			total += w.z * pow(sin(PI * x / whoop_spacing), 2.0)
+					total += h * _ease(1.0 - (x - 0.63) / 0.37)
 	return total
 
 
@@ -341,7 +392,7 @@ func _build_terrain() -> void:
 			# o morro natural (é aí que aparecem os barrancos).
 			var h: float
 			if d <= half + 0.5:
-				h = track_h - 0.4
+				h = track_h - 0.6
 			else:
 				var t := smoothstep(half + 0.5, half + shoulder + blend, d)
 				h = lerpf(track_h - 0.25, natural, t)
@@ -518,30 +569,285 @@ func _build_fences() -> void:
 	_add_multimesh("FenceRails", rails, fence_material)
 
 
-## Árvores voxel (tronco e copa de blocos) espalhadas longe da pista.
+## Árvores voxel de vários tipos, com a copa tingida (verdes variados, eucalipto, pinheiro,
+## ipê amarelo e rosa) e girada, para não parecerem todas iguais. Mais moitas baixas.
 func _build_trees() -> void:
-	if bark_material == null or leaves_material == null:
+	if bark_material == null:
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = tree_seed
 	var trunks: Array[Transform3D] = []
 	var crowns: Array[Transform3D] = []
+	var crown_colors: Array[Color] = []
+	var greens: Array[Color] = [Color(0.42, 0.7, 0.34), Color(0.34, 0.6, 0.28), Color(0.5, 0.74, 0.36),
+		Color(0.3, 0.52, 0.27), Color(0.56, 0.7, 0.32), Color(0.38, 0.64, 0.4)]
 	var tries := 0
-	while trunks.size() < tree_count and tries < tree_count * 20:
+	var placed := 0
+	while placed < tree_count and tries < tree_count * 25:
 		tries += 1
 		var p := _bounds.position + Vector2(rng.randf(), rng.randf()) * _bounds.size
 		var near := _nearest(p)
 		if near.y < track_width * 0.5 + 9.0:
 			continue
-		var ground := terrain_height(p)
-		var trunk_h := rng.randf_range(2.5, 4.5)
-		var base := Vector3(p.x, ground - 0.3, p.y)
-		trunks.append(Transform3D(Basis.from_scale(Vector3(0.7, trunk_h, 0.7)), base + Vector3.UP * trunk_h * 0.5))
-		var size := rng.randf_range(3.0, 5.0)
-		crowns.append(Transform3D(Basis.from_scale(Vector3(size, size * 0.7, size)), base + Vector3.UP * (trunk_h + size * 0.25)))
-		crowns.append(Transform3D(Basis.from_scale(Vector3(size * 0.6, size * 0.5, size * 0.6)), base + Vector3.UP * (trunk_h + size * 0.75)))
+		placed += 1
+		var base := Vector3(p.x, terrain_height(p) - 0.3, p.y)
+		var yaw := Basis(Vector3.UP, rng.randf() * TAU)
+		var kind := rng.randf()
+		if kind < 0.45:  # copa larga, de dois ou três blocos
+			var h := rng.randf_range(2.5, 4.5)
+			trunks.append(Transform3D(yaw.scaled(Vector3(0.7, h, 0.7)), base + Vector3.UP * h * 0.5))
+			var size := rng.randf_range(3.0, 5.5)
+			var color := greens[rng.randi() % greens.size()]
+			for b in rng.randi_range(2, 3):
+				var off := Vector3(rng.randf_range(-0.3, 0.3), 0.25 + b * 0.4, rng.randf_range(-0.3, 0.3)) * size
+				var k := 1.0 - b * 0.25
+				crowns.append(Transform3D(yaw.scaled(Vector3(size * k, size * 0.6 * k, size * k)), base + Vector3.UP * h + off))
+				crown_colors.append(color.lightened(rng.randf_range(0.0, 0.08)))
+		elif kind < 0.65:  # eucalipto: alto e fino, copa lá em cima
+			var h := rng.randf_range(7.0, 11.0)
+			trunks.append(Transform3D(yaw.scaled(Vector3(0.45, h, 0.45)), base + Vector3.UP * h * 0.5))
+			var color := Color(0.6, 0.72, 0.55)
+			crowns.append(Transform3D(yaw.scaled(Vector3(2.6, 3.6, 2.6)), base + Vector3.UP * (h + 0.8)))
+			crowns.append(Transform3D(yaw.scaled(Vector3(1.8, 2.0, 1.8)), base + Vector3.UP * (h - 2.0) + Vector3(0.8, 0, 0)))
+			crown_colors.append_array([color, color.darkened(0.08)])
+		elif kind < 0.8:  # pinheiro: camadas que afinam
+			var h := rng.randf_range(1.5, 2.5)
+			trunks.append(Transform3D(yaw.scaled(Vector3(0.6, h, 0.6)), base + Vector3.UP * h * 0.5))
+			var color := Color(0.24, 0.46, 0.3)
+			var y := h
+			for size in [4.2, 3.2, 2.2, 1.2]:
+				crowns.append(Transform3D(yaw.scaled(Vector3(size, 1.4, size)), base + Vector3.UP * (y + 0.7)))
+				crown_colors.append(color.lightened(rng.randf_range(0.0, 0.06)))
+				y += 1.2
+		elif kind < 0.88:  # ipê florido, amarelo ou rosa
+			var h := rng.randf_range(3.0, 4.5)
+			trunks.append(Transform3D(yaw.scaled(Vector3(0.6, h, 0.6)), base + Vector3.UP * h * 0.5))
+			var color := Color(1.0, 0.86, 0.25) if rng.randf() < 0.6 else Color(0.98, 0.5, 0.75)
+			var size := rng.randf_range(3.5, 5.0)
+			crowns.append(Transform3D(yaw.scaled(Vector3(size, size * 0.55, size)), base + Vector3.UP * (h + size * 0.2)))
+			crowns.append(Transform3D(yaw.scaled(Vector3(size * 0.6, size * 0.4, size * 0.6)), base + Vector3.UP * (h + size * 0.55)))
+			crown_colors.append_array([color, color.lightened(0.1)])
+		else:  # moita
+			var color := greens[rng.randi() % greens.size()].darkened(0.1)
+			for b in rng.randi_range(1, 3):
+				var size := rng.randf_range(1.0, 2.0)
+				var off := Vector3(rng.randf_range(-1.0, 1.0), size * 0.4, rng.randf_range(-1.0, 1.0))
+				crowns.append(Transform3D(yaw.scaled(Vector3(size, size * 0.8, size)), base + off))
+				crown_colors.append(color)
 	_add_multimesh("TreeTrunks", trunks, bark_material)
-	_add_multimesh("TreeCrowns", crowns, leaves_material)
+	_add_multimesh("TreeCrowns", crowns, _prop_material("leaves_tint"), crown_colors)
+
+
+## Pedras, fardos de feno nas curvas, pneus pintados nos grampos, barracas e público na
+## largada e no salto grande, bandeiras, um celeiro e uma caixa d'água.
+func _build_props() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = tree_seed + 1
+	var half := track_width * 0.5
+	var n := centerline.size()
+
+	# Pedras em grupinhos pelo pasto.
+	var rocks: Array[Transform3D] = []
+	var rock_colors: Array[Color] = []
+	var tries := 0
+	while rocks.size() < 90 and tries < 2000:
+		tries += 1
+		var p := _bounds.position + Vector2(rng.randf(), rng.randf()) * _bounds.size
+		if _nearest(p).y < half + 5.0:
+			continue
+		for k in rng.randi_range(1, 3):
+			var q := p + Vector2(rng.randf_range(-1.5, 1.5), rng.randf_range(-1.5, 1.5))
+			var size := Vector3(rng.randf_range(0.5, 1.6), rng.randf_range(0.3, 0.9), rng.randf_range(0.5, 1.4))
+			var basis := Basis.from_euler(Vector3(rng.randf_range(-0.15, 0.15), rng.randf() * TAU, rng.randf_range(-0.15, 0.15)))
+			rocks.append(Transform3D(basis.scaled(size), Vector3(q.x, terrain_height(q) + size.y * 0.3, q.y)))
+			rock_colors.append(Color.WHITE.darkened(rng.randf_range(0.0, 0.25)))
+	_add_multimesh("Rocks", rocks, _prop_material("rock"), rock_colors)
+
+	# Curvas: fardos de feno do lado de fora e pneus pintados no lado de dentro dos grampos.
+	var bales: Array[Transform3D] = []
+	var tires_black: Array[Transform3D] = []
+	var tires_white: Array[Transform3D] = []
+	var i := 0
+	while i < n:
+		var bank := banks[i]
+		if absf(bank) < 0.18:
+			i += 4
+			continue
+		# Inclinação > 0: o lado direito é o mais alto, e o lado mais alto é o de fora da curva.
+		var outside := 1.0 if bank > 0.0 else -1.0
+		var t := _tangent(centerline, i)
+		var r := _right(t)
+		var yaw := Basis.looking_at(Vector3(t.x, 0.0, t.y), Vector3.UP)
+		# fardos atrás da cerca de fora
+		for k in 3:
+			var p := centerline[i] + r * outside * (half + 3.4) + t * (k - 1) * 1.3
+			if _nearest(p).y < half + 2.5:
+				continue
+			bales.append(Transform3D(yaw.scaled(Vector3(1.2, 0.8, 1.0)), Vector3(p.x, terrain_height(p) + 0.4, p.y)))
+			if k == 1:
+				bales.append(Transform3D(yaw.scaled(Vector3(1.2, 0.8, 1.0)), Vector3(p.x, terrain_height(p) + 1.2, p.y)))
+		# pneus na parte de dentro das curvas fechadas
+		if absf(bank) > 0.26:
+			var p := centerline[i] - r * outside * (half + 1.7)
+			if _nearest(p).y > half + 0.6:
+				# Pilhas alternando pneu preto e pintado de branco.
+				var stack := tires_white if (i / 16) % 2 == 0 else tires_black
+				for k in 3:
+					stack.append(Transform3D(Basis(Vector3.UP, k * 0.7).scaled(Vector3(0.9, 0.34, 0.9)),
+						Vector3(p.x, terrain_height(p) + 0.17 + k * 0.34, p.y)))
+		i += 16
+	_add_multimesh("HayBales", bales, _prop_material("hay"))
+	_add_multimesh("TireStacks", tires_black, _prop_material("tire"))
+	_add_multimesh("TireStacksWhite", tires_white, _prop_material("plain"))
+
+	# Público e barracas: na reta da largada e no salto grande (a mesa mais alta).
+	var people: Array[Transform3D] = []
+	var people_colors: Array[Color] = []
+	var tents: Array[Transform3D] = []
+	var tent_colors: Array[Color] = []
+	var poles: Array[Transform3D] = []
+	var spots: Array[float] = [finish_distance - 15.0, finish_distance + 15.0]
+	var biggest := Vector4.ZERO
+	for j in jumps:
+		if j.z > biggest.z:
+			biggest = j
+	if biggest.z > 0.0:
+		spots.append(biggest.x + biggest.y * 0.5)
+	var shirts: Array[Color] = [Color("e83a3a"), Color("2a5ce8"), Color("f0d23c"), Color("2fb35a"), Color("f2f2ec"),
+		Color("f0a020"), Color("8a3ad8"), Color("1a1a22"), Color("e84aa8")]
+	var skins: Array[Color] = [Color(0.92, 0.72, 0.56), Color(0.76, 0.54, 0.38), Color(0.55, 0.38, 0.26), Color(0.98, 0.82, 0.68)]
+	for spot in spots:
+		var idx := _index_at_distance(fposmod(spot, length))
+		var t := _tangent(centerline, idx)
+		var r := _right(t)
+		var face := Basis.looking_at(Vector3(-r.x, 0.0, -r.y), Vector3.UP)  # olhando para a pista
+		# barraca
+		var c := centerline[idx] + r * (half + 9.0)
+		if _nearest(c).y > half + 6.0:
+			var g := terrain_height(c)
+			tents.append(Transform3D(face.scaled(Vector3(4.5, 0.25, 4.0)), Vector3(c.x, g + 2.6, c.y)))
+			tent_colors.append(shirts[rng.randi() % 4])
+			for dx: float in [-2.0, 2.0]:
+				for dz: float in [-1.8, 1.8]:
+					var q := c + r * dz + t * dx
+					poles.append(Transform3D(Basis.from_scale(Vector3(0.12, 2.6, 0.12)), Vector3(q.x, g + 1.3, q.y)))
+		# gente em pé atrás da cerca, em duas fileiras
+		for k in 18:
+			var along := rng.randf_range(-12.0, 12.0)
+			var back := rng.randf_range(3.6, 6.5)
+			var q := centerline[idx] + t * along + r * (half + back)
+			if _nearest(q).y < half + 3.0:
+				continue
+			var g := terrain_height(q)
+			var body := face * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4))
+			var tall := rng.randf_range(0.9, 1.1)
+			people.append(Transform3D(body.scaled(Vector3(0.5, 0.8, 0.3) * tall), Vector3(q.x, g + 0.4 * tall, q.y)))
+			people_colors.append(Color(0.2, 0.22, 0.32) if rng.randf() < 0.7 else Color(0.45, 0.32, 0.2))
+			people.append(Transform3D(body.scaled(Vector3(0.6, 0.7, 0.35) * tall), Vector3(q.x, g + 1.15 * tall, q.y)))
+			people_colors.append(shirts[rng.randi() % shirts.size()])
+			people.append(Transform3D(body.scaled(Vector3(0.4, 0.4, 0.4) * tall), Vector3(q.x, g + 1.72 * tall, q.y)))
+			people_colors.append(skins[rng.randi() % skins.size()])
+	_add_multimesh("Tents", tents, _prop_material("canvas"), tent_colors)
+	_add_multimesh("TentPoles", poles, fence_material)
+	_add_multimesh("Spectators", people, _prop_material("plain"), people_colors)
+
+	# Bandeiras dos dois lados da reta da largada.
+	var flag_poles: Array[Transform3D] = []
+	var flags: Array[Transform3D] = []
+	var flag_colors: Array[Color] = []
+	for k in range(-4, 5):
+		var idx := _index_at_distance(fposmod(finish_distance + k * 10.0, length))
+		var t := _tangent(centerline, idx)
+		var r := _right(t)
+		for side in [-1.0, 1.0]:
+			var q: Vector2 = centerline[idx] + r * side * (half + 2.8)
+			if _nearest(q).y < half + 2.0:
+				continue
+			var g := terrain_height(q)
+			flag_poles.append(Transform3D(Basis.from_scale(Vector3(0.1, 4.0, 0.1)), Vector3(q.x, g + 2.0, q.y)))
+			var yaw := Basis.looking_at(Vector3(t.x, 0.0, t.y), Vector3.UP)
+			var f := Vector3(q.x, g + 3.5, q.y) + Vector3(t.x, 0.0, t.y) * -0.65
+			flags.append(Transform3D(yaw.scaled(Vector3(0.05, 0.7, 1.2)), f))
+			flag_colors.append(shirts[(k + 4 + int(side > 0.0) * 3) % shirts.size()])
+	_add_multimesh("FlagPoles", flag_poles, fence_material)
+	_add_multimesh("Flags", flags, _prop_material("plain"), flag_colors)
+
+	# Celeiro e caixa d'água num canto plano, longe da pista.
+	var farm_spot := Vector2.INF
+	for attempt in 400:
+		var p := _bounds.position + Vector2(rng.randf(), rng.randf()) * _bounds.size
+		var d := _nearest(p).y
+		var flat := absf(terrain_height(p + Vector2(6, 0)) - terrain_height(p - Vector2(6, 0))) + absf(terrain_height(p + Vector2(0, 8)) - terrain_height(p - Vector2(0, 8)))
+		if d > 28.0 and d < 55.0 and flat < 1.2:
+			farm_spot = p
+			break
+	if farm_spot != Vector2.INF:
+		var g := terrain_height(farm_spot) - 0.3
+		var barn := Node3D.new()
+		barn.name = "Barn"
+		barn.position = Vector3(farm_spot.x, g, farm_spot.y)
+		barn.rotation.y = rng.randf() * TAU
+		_generated.add_child(barn)
+		_add_box(barn, Vector3(0, 2.6, 0), Vector3(9.0, 5.2, 13.0), _prop_material("barn"), false)
+		for side in [-1.0, 1.0]:
+			var roof := Node3D.new()
+			roof.position = Vector3(side * 2.4, 6.3, 0)
+			roof.rotation.z = side * -0.55
+			barn.add_child(roof)
+			_add_box(roof, Vector3.ZERO, Vector3(5.8, 0.3, 13.6), _prop_material("roof"), false)
+		_add_box(barn, Vector3(0, 1.7, 6.55), Vector3(3.4, 3.4, 0.1), fence_material, false)
+		var tank := Node3D.new()
+		tank.name = "WaterTank"
+		tank.position = barn.position + Vector3(9.0, 0.0, -4.0).rotated(Vector3.UP, barn.rotation.y)
+		_generated.add_child(tank)
+		for x in [-1.1, 1.1]:
+			for z in [-1.1, 1.1]:
+				_add_box(tank, Vector3(x, 3.0, z), Vector3(0.25, 6.0, 0.25), fence_material, false)
+		_add_box(tank, Vector3(0, 7.4, 0), Vector3(3.2, 2.8, 3.2), _prop_material("roof"), false)
+
+
+var _prop_materials := {}
+
+## Material de objeto do cenário (textura em pixels, tingida pela cor de cada instância).
+func _prop_material(texture_name: String) -> StandardMaterial3D:
+	if _prop_materials.has(texture_name):
+		return _prop_materials[texture_name]
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load(PROP_TEXTURES + texture_name + ".png")
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	material.uv1_triplanar = true
+	material.vertex_color_use_as_albedo = true
+	material.vertex_color_is_srgb = true
+	material.roughness = 1.0
+	_prop_materials[texture_name] = material
+	return material
+
+
+## Costelas iguais às do estádio: rampas de ondulação (Ramp com is_bump), assentadas na
+## pista seguindo a inclinação dela. A moto pode deslizar por cima empinada.
+func _build_whoops() -> void:
+	var holder := Node3D.new()
+	holder.name = "Whoops"
+	_generated.add_child(holder)
+	for w in whoops:
+		for k in int(w.y):
+			var idx := _index_at_distance(fposmod(w.x + k * whoop_spacing, length))
+			var ahead := index_ahead(idx, 1.0)
+			var t := _tangent(centerline, idx)
+			var grade := height_at(ahead) - height_at(idx)
+			var forward := Vector3(t.x, grade, t.y).normalized()
+			var ramp := Ramp.new()
+			ramp.name = "Costela%d" % (k + 1)
+			ramp.is_bump = true
+			ramp.up_length = whoop_length * 0.5
+			ramp.top_length = 0.0
+			ramp.down_length = whoop_length * 0.5
+			ramp.height = w.z
+			ramp.width = track_width
+			ramp.material = track_material
+			var p := centerline[idx]
+			ramp.transform = Transform3D(Basis.looking_at(forward, Vector3.UP), Vector3(p.x, height_at(idx) - 0.05, p.y))
+			holder.add_child(ramp)
 
 
 ## Torre do bandeirinha na largada (madeira e telhadinho), do lado esquerdo.
@@ -564,17 +870,21 @@ func _build_flag_tower() -> void:
 		_add_box(tower, Vector3(x, 4.4, -1.2), Vector3(0.15, 1.6, 0.15), fence_material, false)
 
 
-func _add_multimesh(node_name: String, transforms: Array[Transform3D], material: Material) -> void:
+func _add_multimesh(node_name: String, transforms: Array[Transform3D], material: Material,
+		colors: Array[Color] = []) -> void:
 	if transforms.is_empty():
 		return
 	var box := BoxMesh.new()
 	box.material = material
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = not colors.is_empty()
 	multimesh.mesh = box
 	multimesh.instance_count = transforms.size()
 	for i in transforms.size():
 		multimesh.set_instance_transform(i, transforms[i])
+		if multimesh.use_colors:
+			multimesh.set_instance_color(i, colors[i] if i < colors.size() else Color.WHITE)
 	var instance := MultiMeshInstance3D.new()
 	instance.name = node_name
 	instance.multimesh = multimesh

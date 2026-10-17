@@ -76,6 +76,8 @@ extends Node3D
 
 var _generated: Node3D
 var _rebuild_queued: bool = false
+## Estádios já gerados nesta sessão (por configuração): na segunda vez só remonta os nós.
+static var _cache := {}
 
 
 func _ready() -> void:
@@ -93,6 +95,11 @@ func _rebuild() -> void:
 	_rebuild_queued = false
 	if _generated:
 		_generated.free()
+	var key := _cache_key()
+	if _cache.has(key):
+		_generated = (_cache[key] as PackedScene).instantiate()
+		add_child(_generated)
+		return
 	_generated = Node3D.new()
 	_generated.name = "_Generated"
 	add_child(_generated)
@@ -101,6 +108,20 @@ func _rebuild() -> void:
 	_build_towers()
 	_build_jumbotron()
 	_build_outside()
+	for node in _generated.find_children("*", "", true, false):
+		node.owner = _generated
+	var packed := PackedScene.new()
+	packed.pack(_generated)
+	_cache[key] = packed
+
+
+## Todas as propriedades exportadas: mudou alguma, gera de novo.
+func _cache_key() -> int:
+	var values := []
+	for prop in get_property_list():
+		if prop.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and prop.usage & PROPERTY_USAGE_STORAGE:
+			values.append(get(prop.name))
+	return str(values).hash()
 
 
 # ---------------------------------------------------------------- utilidades

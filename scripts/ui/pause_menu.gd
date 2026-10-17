@@ -17,6 +17,8 @@ const GAME_FONT := preload("res://assets/fonts/russo_one/RussoOne-Regular.ttf")
 static var _race_started := false
 ## Acabou de trocar de pista pelo menu: a cena nova abre com o foco no item da pista.
 static var _focus_track := false
+## Cenas das pistas, carregadas e geradas no início do jogo (trocar de pista fica rápido).
+static var _track_scenes: Array[PackedScene] = []
 
 ## Abre o jogo no menu, antes da largada.
 @export var start_in_menu: bool = true
@@ -73,6 +75,8 @@ func _ready() -> void:
 ## Menu inicial. Se abriu numa pista diferente da escolhida (o jogo sempre começa no estádio),
 ## carrega a escolhida antes.
 func _start() -> void:
+	if _track_scenes.is_empty():
+		_preload_tracks()
 	var current := get_tree().current_scene
 	if current and current.scene_file_path != PlayerProfile.track_scene():
 		get_tree().paused = true
@@ -166,7 +170,24 @@ func _change_track(step: int) -> void:
 
 
 func _go_to_track() -> void:
-	get_tree().change_scene_to_file(PlayerProfile.track_scene())
+	var scene := _track_scenes[PlayerProfile.track_index] if PlayerProfile.track_index < _track_scenes.size() else null
+	if scene:
+		get_tree().change_scene_to_packed(scene)
+	else:
+		get_tree().change_scene_to_file(PlayerProfile.track_scene())
+
+
+## Carrega todas as pistas e gera o que é pesado (terreno, arquibancadas) uma vez, sem mostrar:
+## os scripts guardam o resultado e a troca de pista depois só remonta os nós.
+func _preload_tracks() -> void:
+	for track in PlayerProfile.TRACKS:
+		var scene := load(track[1]) as PackedScene
+		_track_scenes.append(scene)
+		var instance := scene.instantiate()
+		for node in instance.find_children("*", "", true, false):
+			if node.has_method("_cache_key"):
+				node._rebuild()
+		instance.free()
 
 
 func _build_custom() -> void:
