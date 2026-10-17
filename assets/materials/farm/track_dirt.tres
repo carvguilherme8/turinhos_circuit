@@ -13,4 +13,6 @@ shader_parameter/macro_meters = 36.0
 shader_parameter/macro_strength = 0.22
 shader_parameter/use_ruts = true
 shader_parameter/track_half_width = 4.0
-shader_parameter/rut_darkness = 0.3
+shader_parameter/rut_darkness = 0.5
+shader_parameter/wetness = 0.85
+shader_parameter/puddle_amount = 0.22

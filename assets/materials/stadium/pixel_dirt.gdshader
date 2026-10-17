@@ -4,6 +4,8 @@ shader_type spatial;
 // - manchas grandes e suaves (dois tamanhos), quantizadas em degraus para combinar com o pixel art;
 // - opcional (faixa da pista): sulcos de pneu ondulados e terra solta nas bordas;
 // - opcional: marcas de pneu deixadas pela moto, que se acumulam a cada passada.
+// - opcional (chuva): terra molhada (mais escura e brilhante) e poças que refletem o céu,
+//   com gotinhas caindo nelas.
 //   Na pista, UV.x = distância lateral até a linha central (m) e UV.y = distância percorrida (m).
 
 uniform sampler2D detail : source_color, filter_nearest_mipmap_anisotropic, repeat_enable;
@@ -20,6 +22,10 @@ uniform bool use_wear = false;
 uniform vec2 wear_origin = vec2(0.0);
 uniform vec2 wear_size = vec2(1.0);
 uniform float wear_darkness = 0.5;
+// Chuva: 0 = seco. Poças: fração do chão plano coberta por poças (0 = nenhuma).
+uniform float wetness : hint_range(0.0, 1.0) = 0.0;
+uniform float puddle_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float puddle_meters = 11.0;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -77,7 +83,30 @@ void fragment() {
 		}
 	}
 
+	float roughness = 1.0;
+	float specular = 0.2;
+	if (wetness > 0.0) {
+		// Lama: mais escura, puxando para o marrom, e lisa (brilha com a luz do céu).
+		albedo *= mix(vec3(1.0), vec3(0.62, 0.52, 0.46), wetness);
+		roughness = mix(1.0, 0.42, wetness);
+		specular = mix(0.2, 0.45, wetness);
+		if (puddle_amount > 0.0 && world_normal.y > 0.96) {
+			// Poças em pixels de 1/8 m, onde o ruído grande fica abaixo do limite.
+			vec2 cell = floor(world_pos.xz * 8.0) / 8.0;
+			float level = texture(macro, cell / puddle_meters + vec2(0.37, 0.71)).r;
+			if (level < puddle_amount) {
+				float depth = clamp((puddle_amount - level) * 12.0, 0.0, 1.0);
+				albedo = mix(albedo * 0.55, vec3(0.05, 0.05, 0.06), floor(depth * 3.0) / 3.0);
+				roughness = 0.04;
+				specular = 0.9;
+				// gotas: pixels que acendem por um instante
+				float drop = fract(sin(dot(cell + floor(TIME * 7.0), vec2(12.9898, 78.233))) * 43758.5453);
+				albedo += vec3(0.25) * step(0.985, drop);
+			}
+		}
+	}
+
 	ALBEDO = albedo;
-	ROUGHNESS = 1.0;
-	SPECULAR = 0.2;
+	ROUGHNESS = roughness;
+	SPECULAR = specular;
 }

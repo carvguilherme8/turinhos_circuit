@@ -6,11 +6,13 @@ Saída: assets/audio/sfx/
   ui_move.wav         tique curto ao navegar pelo menu
   ui_select.wav       dois bipes subindo (confirmar)
   ui_back.wav         dois bipes descendo (voltar / fechar)
+  rain_loop.wav       chuva constante (ruído filtrado + gotas), loop sem emenda
 
 Uso: python tools/gen_sfx.py
 """
 import math
 import os
+import random
 import struct
 import wave
 
@@ -39,6 +41,36 @@ def blips(freqs, step, volume=0.3):
     return out
 
 
+def rain(seconds=8.0, fade=0.6, seed=7):
+    """Chuva: chiado (ruído passado por filtros simples) + milhares de gotinhas curtas."""
+    rnd = random.Random(seed)
+    n = int(RATE * (seconds + fade))
+    # chiado: ruído branco suavizado (passa-baixa) menos uma versão mais suave (passa-alta)
+    out = [0.0] * n
+    low = slow = 0.0
+    for i in range(n):
+        w = rnd.uniform(-1.0, 1.0)
+        low += (w - low) * 0.35
+        slow += (low - slow) * 0.02
+        out[i] = (low - slow) * 0.55
+    # gotas: estalinho que some rápido, em alturas variadas
+    for _ in range(int(seconds * 420)):
+        start = rnd.randrange(n - 600)
+        amp = rnd.uniform(0.04, 0.22)
+        freq = rnd.uniform(1800.0, 5200.0)
+        for k in range(rnd.randint(120, 500)):
+            out[start + k] += amp * math.exp(-k / 70.0) * math.sin(2 * math.pi * freq * k / RATE)
+    # loop: o trecho depois do fim entra por baixo do começo
+    m = int(RATE * seconds)
+    f = int(RATE * fade)
+    for i in range(f):
+        t = i / f
+        out[i] = out[i] * math.sin(t * math.pi / 2) + out[m + i] * math.cos(t * math.pi / 2)
+    out = out[:m]
+    peak = max(abs(v) for v in out)
+    return [v / peak * 0.8 for v in out]
+
+
 def save(name, samples):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name)
@@ -58,6 +90,7 @@ def main():
     save("ui_move.wav", tone(1046.5, 0.045, volume=0.22, attack=0.002, release=0.035))
     save("ui_select.wav", blips([784.0, 1174.7], 0.07))
     save("ui_back.wav", blips([880.0, 587.3], 0.07))
+    save("rain_loop.wav", rain())
 
 
 if __name__ == "__main__":

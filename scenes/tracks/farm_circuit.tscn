@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=37 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="camera"]
@@ -31,12 +31,14 @@
 [ext_resource type="Material" path="res://assets/materials/farm/track_dirt.tres" id="farm_track"]
 [ext_resource type="Material" path="res://assets/materials/farm/terrain.tres" id="farm_terrain"]
 [ext_resource type="Material" path="res://assets/materials/farm/fence.tres" id="farm_fence"]
+[ext_resource type="Script" path="res://scripts/tracks/weather_rain.gd" id="weather_rain"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/rain_loop.wav" id="sfx_rain"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
-shader_parameter/top_color = Color(0.56, 0.6, 0.66, 1)
-shader_parameter/mid_color = Color(0.68, 0.71, 0.75, 1)
-shader_parameter/horizon_color = Color(0.78, 0.8, 0.82, 1)
+shader_parameter/top_color = Color(0.42, 0.45, 0.5, 1)
+shader_parameter/mid_color = Color(0.53, 0.56, 0.6, 1)
+shader_parameter/horizon_color = Color(0.62, 0.65, 0.68, 1)
 shader_parameter/ground_color = Color(0.6, 0.63, 0.62, 1)
 shader_parameter/sun_color = Color(0.9, 0.9, 0.88, 1)
 shader_parameter/sun_size = 0.0
@@ -51,16 +53,16 @@ process_mode = 2
 background_mode = 2
 sky = SubResource("Sky")
 ambient_light_source = 3
-ambient_light_energy = 1.1
+ambient_light_energy = 0.95
 tonemap_mode = 2
 glow_enabled = true
 glow_intensity = 0.3
 glow_bloom = 0.02
 fog_enabled = true
-fog_light_color = Color(0.76, 0.79, 0.82, 1)
+fog_light_color = Color(0.6, 0.63, 0.67, 1)
 fog_light_energy = 1.0
 fog_sun_scatter = 0.05
-fog_density = 0.011
+fog_density = 0.014
 fog_sky_affect = 0.85
 
 [node name="FarmCircuit" type="Node3D"]
@@ -71,14 +73,14 @@ environment = SubResource("Env")
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.766, 0.4132, -0.4924, 0, 0.766, 0.6428, 0.6428, -0.4924, 0.5868, 0, 30, 0)
 light_color = Color(0.94, 0.95, 1, 1)
-light_energy = 0.6
+light_energy = 0.42
 shadow_enabled = true
-shadow_opacity = 0.55
+shadow_opacity = 0.4
 directional_shadow_max_distance = 120.0
 
 [node name="Clouds" type="Node3D" parent="."]
 script = ExtResource("clouds")
-color = Color(0.74, 0.76, 0.8, 1)
+color = Color(0.55, 0.57, 0.62, 1)
 glow_color = Color(1, 1, 1, 1)
 glow_energy = 0.0
 coverage = 0.72
@@ -218,3 +220,7 @@ cheer_streams = Array[AudioStream]([ExtResource("sfx_cheer_1"), ExtResource("sfx
 
 [node name="PauseMenu" type="CanvasLayer" parent="."]
 script = ExtResource("pause_menu")
+
+[node name="Rain" type="Node3D" parent="."]
+script = ExtResource("weather_rain")
+rain_sound = ExtResource("sfx_rain")

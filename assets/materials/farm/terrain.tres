@@ -12,3 +12,5 @@ shader_parameter/grass_tex = ExtResource("2_grass")
 shader_parameter/clay_tex = ExtResource("3_clay")
 shader_parameter/dirt_tex = ExtResource("4_dirt")
 shader_parameter/macro = ExtResource("5_macro")
+shader_parameter/wetness = 0.7
+shader_parameter/puddle_amount = 0.26
