@@ -65,7 +65,7 @@ glow_bloom = 0.05
 environment = SubResource("Env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.766, 0.5567, -0.3214, 0, 0.5, 0.866, 0.6428, -0.6634, 0.383, 0, 30, 0)
+transform = Transform3D(0.766, 0.4132, -0.4924, 0, 0.766, 0.6428, 0.6428, -0.4924, 0.5868, 0, 30, 0)
 light_color = Color(1, 0.96, 0.88, 1)
 light_energy = 1.15
 shadow_enabled = true
@@ -80,7 +80,7 @@ coverage = 0.3
 
 [node name="Track" type="Node3D" parent="."]
 script = ExtResource("outdoor_track")
-track_width = 8.0
+track_width = 9.0
 finish_distance = 30.0
 track_material = ExtResource("farm_track")
 finish_material = ExtResource("checker")

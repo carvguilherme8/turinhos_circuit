@@ -4,50 +4,65 @@ extends StadiumTrack
 ## Pista de motocross ao ar livre, em morro (Pista da Fazenda): a linha central é uma curva
 ## suave que passa pelos pontos de controle (x, altura, z), com subidas e descidas. Gera:
 ## terreno com morros em volta (grama, barrancos de terra vermelha onde é íngreme, terra solta
-## perto da pista), a faixa de terra seguindo a altura da pista (com os saltos moldados nela),
-## cercas brancas, árvores, a torre do bandeirinha e o arco de largada/chegada.
-## O traçado foi recriado de um vídeo de uma volta (tools/gen_farm_layout.py).
+## perto da pista), a faixa de terra seguindo a altura da pista (saltos moldados nela e curvas
+## inclinadas para dentro, as berms), cercas brancas, árvores, a torre do bandeirinha e o arco
+## de largada/chegada. O traçado vem de tools/gen_farm_layout.py (--apply grava aqui).
 ## Bots e corrida usam a mesma interface da StadiumTrack (linha central em XZ).
 
+# <layout> (gerado por tools/gen_farm_layout.py --apply)
 ## Pontos de controle da linha central, em ordem de corrida (laço fechado): x, altura, z.
 @export var control_points: PackedVector3Array = PackedVector3Array([
-	Vector3(0, 10, 0), Vector3(8.1, 10, 0), Vector3(16.2, 10, 0), Vector3(24.3, 10, 0), Vector3(32.4, 10, 0), Vector3(40.5, 10, 0),
-	Vector3(48.6, 10, 0), Vector3(56.7, 10, 0), Vector3(64.8, 10, 0), Vector3(73.4, 10.6, 0.5), Vector3(81.8, 11.4, 2.7), Vector3(90.2, 12.2, 5),
-	Vector3(98.5, 13, 7.4), Vector3(104.5, 12.33, 13.1), Vector3(103.4, 11.67, 21.3), Vector3(96, 11, 25.1), Vector3(87.8, 10, 25.1), Vector3(79.6, 9, 25.1),
-	Vector3(71.3, 8, 25.1), Vector3(63.1, 7, 25.1), Vector3(54.9, 6, 25.1), Vector3(46.8, 5.14, 27.3), Vector3(40.9, 4.29, 33.3), Vector3(38.9, 3.43, 41.5),
-	Vector3(40.8, 2.75, 49.9), Vector3(43.3, 2.25, 58.4), Vector3(46.1, 2, 66.5), Vector3(51, 2, 72.9), Vector3(58, 2, 77.1), Vector3(66, 2, 78.4),
-	Vector3(74, 2, 76.8), Vector3(80.8, 2, 72.3), Vector3(85.9, 2.19, 66), Vector3(90.7, 2.58, 59.3), Vector3(95.4, 2.97, 52.7), Vector3(100.2, 3.35, 46.1),
-	Vector3(104.9, 3.74, 39.4), Vector3(109.7, 4.13, 32.8), Vector3(114.5, 4.52, 26.2), Vector3(119.2, 4.9, 19.6), Vector3(123.1, 5.33, 12.3), Vector3(123.5, 5.78, 4),
-	Vector3(120.1, 6.22, -3.5), Vector3(113.7, 6.67, -8.8), Vector3(105.5, 7.06, -10.8), Vector3(96.7, 7.31, -11.7), Vector3(87.8, 7.58, -12.8), Vector3(79.6, 7.92, -16.8),
-	Vector3(73, 8, -22.1), Vector3(65.1, 8, -24.4), Vector3(57, 7.73, -23.5), Vector3(49.2, 6.65, -21.7), Vector3(41.4, 5.58, -19.8), Vector3(33.6, 4.5, -18),
-	Vector3(25.7, 3.42, -16.2), Vector3(17.9, 2.35, -14.3), Vector3(10.1, 1.27, -12.5), Vector3(2.2, 1, -12.7), Vector3(-2.7, 1, -19), Vector3(-0.7, 1, -26.7),
-	Vector3(6.5, 1.1, -30.1), Vector3(14.5, 1.52, -31.5), Vector3(22.5, 1.93, -33), Vector3(30.5, 2.34, -34.4), Vector3(38.5, 2.76, -35.9), Vector3(46.5, 3.17, -37.3),
-	Vector3(54.5, 3.59, -38.8), Vector3(62.5, 4, -40.2), Vector3(70.1, 4.73, -43.3), Vector3(75.8, 5.45, -49.1), Vector3(78.9, 6.12, -56.8), Vector3(81.1, 6.62, -65.1),
-	Vector3(83.2, 7.1, -73.3), Vector3(83.4, 7.5, -81.4), Vector3(81, 7.9, -89.1), Vector3(76.2, 8.3, -95.7), Vector3(69.5, 8.7, -100.4), Vector3(61.8, 9.06, -102.7),
-	Vector3(53.7, 9.29, -104.4), Vector3(45.5, 9.53, -106.1), Vector3(37.4, 9.76, -107.8), Vector3(29.3, 10, -109.5), Vector3(21.8, 10.31, -107.7), Vector3(18.5, 10.62, -100.7),
-	Vector3(21.9, 10.92, -93.7), Vector3(29.3, 10.31, -89.8), Vector3(37, 9.38, -86.1), Vector3(44.7, 8.46, -82.4), Vector3(52, 7.89, -78.2), Vector3(56.6, 7.68, -71.4),
-	Vector3(57.3, 7.47, -63.2), Vector3(53.8, 7.26, -55.8), Vector3(47, 7.05, -51.1), Vector3(39.1, 7.36, -49.2), Vector3(31.2, 7.84, -47.4), Vector3(23.3, 8.32, -45.6),
-	Vector3(15.4, 8.8, -43.9), Vector3(7.5, 9.28, -42.1), Vector3(-0.4, 9.76, -40.4), Vector3(-8.2, 10, -38.2), Vector3(-14.7, 10, -33.5), Vector3(-18.9, 10, -26.7),
-	Vector3(-20, 10, -18.8), Vector3(-18, 10, -11), Vector3(-13, 10, -4.7), Vector3(-6, 10, -0.8)
+	Vector3(0, 10, -0), Vector3(8.1, 10, -0), Vector3(16.2, 10, -0), Vector3(24.2, 10, -0), Vector3(32.3, 10, -0), Vector3(40.4, 10, -0),
+	Vector3(48.5, 10, -0), Vector3(56.6, 10, -0), Vector3(64.7, 10, -0), Vector3(72.7, 10, -0), Vector3(80.8, 10, -0), Vector3(88.9, 10, -0),
+	Vector3(97, 10, -0), Vector3(105.1, 10.05, -0.4), Vector3(112.7, 10.15, -3.3), Vector3(118.7, 10.25, -8.8), Vector3(122.2, 10.35, -16.1), Vector3(122.9, 10.45, -24.2),
+	Vector3(121, 10.62, -32.2), Vector3(118.7, 10.86, -40.1), Vector3(116.3, 11.1, -48), Vector3(114, 11.34, -55.9), Vector3(111.7, 11.58, -63.8), Vector3(109.4, 11.82, -71.8),
+	Vector3(107.2, 12.04, -79.8), Vector3(108.3, 12.19, -88.1), Vector3(113.7, 12.35, -94.4), Vector3(121.7, 12.5, -96.9), Vector3(130, 12.97, -97.1), Vector3(138.2, 13.43, -97.2),
+	Vector3(146.4, 13.9, -97.4), Vector3(154.6, 14.37, -97.5), Vector3(162.8, 14.83, -97.7), Vector3(171, 15.3, -97.8), Vector3(179.2, 15.77, -98), Vector3(187.5, 16, -99),
+	Vector3(192.8, 16, -105.3), Vector3(191.6, 16, -113.5), Vector3(184.7, 16, -118), Vector3(176.4, 15.13, -117.7), Vector3(168.3, 13.97, -117.1), Vector3(160.2, 12.81, -116.6),
+	Vector3(152, 11.65, -116.1), Vector3(143.9, 10.48, -115.6), Vector3(135.7, 9.32, -115), Vector3(127.6, 8.16, -114.5), Vector3(119.5, 7, -114), Vector3(111, 6.45, -114.6),
+	Vector3(103.1, 5.91, -117.6), Vector3(96.2, 5.46, -122.6), Vector3(89.1, 5.32, -126.6), Vector3(81.1, 5.18, -128.5), Vector3(72.9, 5.04, -128.2), Vector3(65.1, 4.89, -125.6),
+	Vector3(58.2, 4.75, -121.1), Vector3(52.9, 4.61, -114.8), Vector3(49.4, 4.5, -107.4), Vector3(46.5, 4.5, -99.9), Vector3(43.7, 4.5, -92.4), Vector3(40.8, 4.5, -84.9),
+	Vector3(38, 4.5, -77.4), Vector3(35.1, 4.5, -69.9), Vector3(32.3, 4.5, -62.4), Vector3(28, 4.59, -55.8), Vector3(20.5, 4.72, -53.5), Vector3(13.4, 4.84, -56.7),
+	Vector3(10.2, 4.97, -63.9), Vector3(11.2, 5.31, -72), Vector3(12.2, 5.72, -80), Vector3(13.3, 6.14, -88), Vector3(14.4, 6.55, -96.1), Vector3(15.5, 6.97, -104.1),
+	Vector3(16.6, 7.38, -112.1), Vector3(17.7, 7.79, -120.2), Vector3(18.4, 8.19, -128.3), Vector3(16.1, 8.57, -136.3), Vector3(10.8, 8.95, -142.6), Vector3(3.4, 9.33, -146.3),
+	Vector3(-4.9, 9.71, -146.6), Vector3(-12.6, 10.1, -143.7), Vector3(-19.8, 10.48, -140), Vector3(-27, 10.86, -136.2), Vector3(-34.2, 11.24, -132.5), Vector3(-41.4, 11.62, -128.8),
+	Vector3(-48.7, 12, -125), Vector3(-54.5, 12, -119.4), Vector3(-56.2, 12, -111.5), Vector3(-53.3, 12, -104), Vector3(-47, 11.82, -98.8), Vector3(-40.4, 11.45, -94.1),
+	Vector3(-33.8, 11.09, -89.4), Vector3(-27.2, 10.73, -84.8), Vector3(-20.6, 10.36, -80.1), Vector3(-14, 10, -75.4), Vector3(-8.3, 10, -69.8), Vector3(-4.6, 10, -62.7),
+	Vector3(-3.4, 10, -54.8), Vector3(-4.7, 10, -46.9), Vector3(-8.5, 10, -39.9), Vector3(-14.2, 10, -34.2), Vector3(-18.6, 10, -27.4), Vector3(-20, 10, -19.4),
+	Vector3(-18.1, 10, -11.5), Vector3(-13.2, 10, -5), Vector3(-6.1, 10, -1),
 ]):
 	set(value):
 		control_points = value
 		_queue_rebuild()
-## Saltos moldados na pista: (distância desde o primeiro ponto, subida m, topo m, altura m).
-## A descida do pouso é 1,3x a subida. Topo 0 = lombada.
+## Saltos moldados na pista: (distância desde o primeiro ponto, comprimento m, altura m,
+## tipo: 0 = lombada, 1 = mesa, 2 = double).
 @export var jumps: Array[Vector4] = [
-	Vector4(70, 5, 0, 0.8), Vector4(190, 5, 0, 0.7), Vector4(425, 5, 0, 0.9),
-	Vector4(442, 5, 0, 0.9), Vector4(520, 8, 10, 2.4), Vector4(780, 7, 12, 2.0),
+	Vector4(62.6, 22, 2, 1),
+	Vector4(145, 8, 1, 0),
+	Vector4(158.4, 20, 1.7, 2),
+	Vector4(248.8, 24, 2.8, 1),
+	Vector4(330.3, 30, 2.4, 2),
+	Vector4(546.6, 26, 2, 2),
+	Vector4(575.4, 26, 2, 2),
+	Vector4(662.6, 22, 2.2, 1),
+	Vector4(723.5, 22, 2, 1),
 ]:
 	set(value):
 		jumps = value
 		_queue_rebuild()
 ## Costelas: (distância do início, quantidade, altura m), uma a cada `whoop_spacing` m.
-@export var whoops: Array[Vector3] = [Vector3(642, 8, 0.7)]:
+@export var whoops: Array[Vector3] = [
+	Vector3(466.6, 11, 0.75),
+]:
 	set(value):
 		whoops = value
 		_queue_rebuild()
+# </layout>
 @export var whoop_spacing: float = 3.0
+## Inclinação das curvas (berms): quanto inclina por curvatura e o máximo (subida por metro
+## de largura; 0,3 = ~17°). O lado de fora da curva fica mais alto.
+@export var bank_gain: float = 3.0
+@export var max_bank: float = 0.32
 
 @export_group("Terreno")
 ## Quanto o terreno passa da pista em volta (m) e o tamanho de cada quadradinho (m).
@@ -57,7 +72,7 @@ extends StadiumTrack
 @export var hill_height: float = 3.0
 @export var rim_rise: float = 0.18
 ## Multiplica as alturas dos pontos de controle (relevo mais ou menos acentuado).
-@export var height_scale: float = 1.35
+@export var height_scale: float = 1.6
 ## Faixa de terra solta e de transição para a grama, a partir da borda da pista (m).
 @export var shoulder: float = 2.5
 @export var blend: float = 7.0
@@ -72,6 +87,8 @@ extends StadiumTrack
 
 ## Altura da pista em cada ponto da linha central (já com os saltos).
 var heights: PackedFloat32Array = PackedFloat32Array()
+## Inclinação lateral em cada ponto: altura extra por metro para a direita (berms).
+var banks: PackedFloat32Array = PackedFloat32Array()
 ## Pontos da linha central a cada ~4 m, para as buscas do terreno.
 var _coarse: PackedInt32Array = PackedInt32Array()
 var _bounds := Rect2()
@@ -173,21 +190,66 @@ func _shape_profile() -> void:
 	for i in n:
 		var d := distances[i]
 		heights[i] += _jump_profile(d) + _whoop_profile(d)
+	_compute_banks()
 
 
+## Berms: inclina a pista nas curvas (lado de fora mais alto), proporcional à curvatura.
+func _compute_banks() -> void:
+	var n := centerline.size()
+	var raw := PackedFloat32Array()
+	raw.resize(n)
+	for i in n:
+		var a := _tangent(centerline, posmod(i - 6, n))
+		var b := _tangent(centerline, posmod(i + 6, n))
+		# Curvatura (rad/m), positiva virando à direita: o lado esquerdo (fora) sobe.
+		raw[i] = clampf(-a.angle_to(b) / 6.0 * bank_gain, -max_bank, max_bank)
+	banks.resize(n)
+	for i in n:
+		var sum := 0.0
+		for k in range(-10, 11):
+			sum += raw[posmod(i + k, n)]
+		banks[i] = sum / 21.0
+
+
+## Altura da superfície da pista no ponto `index`, a `lateral` metros para a direita.
+func surface_height(index: int, lateral: float) -> float:
+	var i := posmod(index, heights.size())
+	var half := track_width * 0.5
+	return heights[i] + banks[i] * clampf(lateral, -half, half)
+
+
+## Formas dos saltos ao longo do comprimento L (tipo em j.w):
+## 0 lombada; 1 mesa (subida 25%, topo 35%, pouso 40%);
+## 2 double (kicker 25%, queda 8%, buraco 17%, frente do pouso 8%, pouso 42%).
 func _jump_profile(d: float) -> float:
 	var total := 0.0
 	for j in jumps:
-		var up := j.y
-		var top := j.z
-		var down := up * 1.3
-		var x := fposmod(d - j.x, length)
-		if x < up:
-			total += j.w * _ease(x / up)
-		elif x < up + top:
-			total += j.w
-		elif x < up + top + down:
-			total += j.w * _ease(1.0 - (x - up - top) / down)
+		var size := j.y
+		var h := j.z
+		var x := fposmod(d - j.x, length) / size
+		if x >= 1.0:
+			continue
+		match int(j.w):
+			0:
+				total += h * pow(sin(PI * x), 2.0)
+			1:
+				if x < 0.25:
+					total += h * _ease(x / 0.25)
+				elif x < 0.6:
+					total += h
+				else:
+					total += h * _ease(1.0 - (x - 0.6) / 0.4)
+			_:
+				if x < 0.25:
+					total += h * _ease(x / 0.25)
+				elif x < 0.33:
+					total += h * _ease(1.0 - (x - 0.25) / 0.08)
+				elif x < 0.5:
+					pass
+				elif x < 0.58:
+					total += h * _ease((x - 0.5) / 0.08)
+				else:
+					total += h * _ease(1.0 - (x - 0.58) / 0.42)
 	return total
 
 
@@ -217,6 +279,11 @@ func finish_transform() -> Transform3D:
 
 
 # ---------------------------------------------------------------- terreno
+
+## Distância lateral (m, + = direita) de `p` em relação à linha central no ponto `index`.
+func _lateral(p: Vector2, index: int) -> float:
+	return (p - centerline[index]).dot(_right(_tangent(centerline, index)))
+
 
 ## Ponto da linha central mais perto de `p` (busca grossa e depois fina) e a distância.
 func _nearest(p: Vector2) -> Vector2:
@@ -267,7 +334,7 @@ func _build_terrain() -> void:
 		for c in cols:
 			var p := _bounds.position + Vector2(c, r) * terrain_cell
 			var near := _nearest(p)
-			var track_h := heights[int(near.x)]
+			var track_h := surface_height(int(near.x), _lateral(p, int(near.x)))
 			var d := near.y
 			var natural := _natural_height(p, d)
 			# Embaixo da pista o terreno fica um pouco abaixo dela; depois sobe ou desce até
@@ -386,16 +453,17 @@ func _build_track_surface() -> void:
 	for i in range(0, n, 2):
 		var p := centerline[i]
 		var r := _right(_tangent(centerline, i))
-		var h := heights[i]
 		var row: Array = []
-		for side in [[-lip, -0.35], [-half, 0.0], [half, 0.0], [lip, -0.35]]:
+		# Bordas e o meio (para a inclinação das berms ficar lisa), mais a aba de cada lado.
+		for side in [[-lip, -0.5], [-half, 0.0], [0.0, 0.0], [half, 0.0], [lip, -0.5]]:
 			var q: Vector2 = p + r * side[0]
-			row.append([Vector3(q.x, h + side[1], q.y), Vector2(side[0], distances[i])])
+			var h: float = surface_height(i, side[0]) + side[1]
+			row.append([Vector3(q.x, h, q.y), Vector2(side[0], distances[i])])
 		rows.append(row)
 	for k in rows.size():
 		var a: Array = rows[k]
 		var b: Array = rows[(k + 1) % rows.size()]
-		for s in 3:
+		for s in 4:
 			for v in [a[s], b[s], b[s + 1], a[s], b[s + 1], a[s + 1]]:
 				st.set_uv(v[1])
 				st.add_vertex(v[0])
@@ -435,7 +503,7 @@ func _build_fences() -> void:
 				continue
 			var top := Vector3(p.x, terrain_height(p), p.y)
 			# Nada de cerca subindo barranco: só onde o chão está perto da altura da pista.
-			if absf(top.y - heights[i]) > 1.2:
+			if absf(top.y - surface_height(i, offset * side)) > 1.2:
 				prev = Vector3.INF
 				continue
 			posts.append(Transform3D(Basis.from_scale(Vector3(0.18, 1.2, 0.18)), top + Vector3.UP * 0.6))
