@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://assets/materials/stadium/pixel_dirt.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/textures/farm/dirt_red.png" id="2_detail"]
+[ext_resource type="Texture2D" path="res://assets/textures/stadium/dirt_macro.png" id="3_macro"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/detail = ExtResource("2_detail")
+shader_parameter/macro = ExtResource("3_macro")
+shader_parameter/detail_meters = 4.0
+shader_parameter/macro_meters = 36.0
+shader_parameter/macro_strength = 0.22
+shader_parameter/use_ruts = true
+shader_parameter/track_half_width = 4.0
+shader_parameter/rut_darkness = 0.3

@@ -1,9 +1,15 @@
 extends RefCounted
-## Visual do piloto do jogador (número, cor do uniforme e da moto), salvo em user:// e mantido
-## entre corridas. Tudo estático: qualquer script usa com
+## Visual do piloto do jogador (número, cor do uniforme e da moto) e a pista escolhida, salvos
+## em user:// e mantidos entre corridas. Tudo estático: qualquer script usa com
 ## `const PlayerProfile := preload("res://scripts/core/player_profile.gd")`.
 
 const SAVE_PATH := "user://player_profile.cfg"
+
+## Pistas que dá para escolher no menu: [nome, cena].
+const TRACKS: Array[Array] = [
+	["ESTÁDIO", "res://scenes/tracks/stadium_circuit.tscn"],
+	["FAZENDA", "res://scenes/tracks/farm_circuit.tscn"],
+]
 
 ## Cores do uniforme: [principal, detalhe]. O detalhe contrasta com a principal.
 const SUIT_COLORS: Array[Array] = [
@@ -25,6 +31,7 @@ const BIKE_COLORS: Array[Color] = [
 static var number: int = 8
 static var suit_index: int = 0
 static var bike_index: int = 0
+static var track_index: int = 0
 static var _loaded := false
 ## Chamadas sem argumentos quando algo muda (a moto do jogador se repinta).
 static var _listeners: Array[Callable] = []
@@ -40,6 +47,7 @@ static func ensure_loaded() -> void:
 	number = clampi(cfg.get_value("piloto", "numero", number), 0, 9)
 	suit_index = clampi(cfg.get_value("piloto", "uniforme", suit_index), 0, SUIT_COLORS.size() - 1)
 	bike_index = clampi(cfg.get_value("piloto", "moto", bike_index), 0, BIKE_COLORS.size() - 1)
+	track_index = clampi(cfg.get_value("jogo", "pista", track_index), 0, TRACKS.size() - 1)
 
 
 static func set_values(new_number: int, new_suit: int, new_bike: int) -> void:
@@ -47,16 +55,35 @@ static func set_values(new_number: int, new_suit: int, new_bike: int) -> void:
 	number = wrapi(new_number, 0, 10)
 	suit_index = wrapi(new_suit, 0, SUIT_COLORS.size())
 	bike_index = wrapi(new_bike, 0, BIKE_COLORS.size())
-	var cfg := ConfigFile.new()
-	cfg.set_value("piloto", "numero", number)
-	cfg.set_value("piloto", "uniforme", suit_index)
-	cfg.set_value("piloto", "moto", bike_index)
-	cfg.save(SAVE_PATH)
+	_save()
 	for listener in _listeners.duplicate():
 		if listener.is_valid():
 			listener.call()
 		else:
 			_listeners.erase(listener)
+
+
+static func set_track(index: int) -> void:
+	ensure_loaded()
+	track_index = wrapi(index, 0, TRACKS.size())
+	_save()
+
+
+static func track_name() -> String:
+	return TRACKS[track_index][0]
+
+
+static func track_scene() -> String:
+	return TRACKS[track_index][1]
+
+
+static func _save() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("piloto", "numero", number)
+	cfg.set_value("piloto", "uniforme", suit_index)
+	cfg.set_value("piloto", "moto", bike_index)
+	cfg.set_value("jogo", "pista", track_index)
+	cfg.save(SAVE_PATH)
 
 
 static func listen(callable: Callable) -> void:

@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## Menu de pausa (Esc / Start): os botões entram pelas laterais em escada, um depois do outro.
 ## O jogo abre nele (com "CORRER" no lugar de "RETOMAR"); a contagem só começa depois.
-## À esquerda: retomar, customizar piloto e fechar o jogo. A customização entra pela direita
+## À esquerda: retomar, pista (estádio ou fazenda), customizar piloto e fechar o jogo. A customização entra pela direita
 ## (o menu da esquerda sai, para a moto ficar à vista): número, cor do uniforme e cor da moto
 ## (a moto do jogador se repinta na hora).
 
@@ -15,6 +15,8 @@ const GAME_FONT := preload("res://assets/fonts/russo_one/RussoOne-Regular.ttf")
 
 ## Já saiu do menu inicial nesta sessão: reiniciar a corrida não volta para ele.
 static var _race_started := false
+## Acabou de trocar de pista pelo menu: a cena nova abre com o foco no item da pista.
+static var _focus_track := false
 
 ## Abre o jogo no menu, antes da largada.
 @export var start_in_menu: bool = true
@@ -39,6 +41,7 @@ var _bike_buttons: Array[Button] = []
 var _tween: Tween
 var _title: Label
 var _first_button: Button
+var _track_button: Button
 var _starting := false
 var _sfx: AudioStreamPlayer
 ## Foco posto pelo próprio menu (ao abrir/trocar de painel): não toca o som de mover.
@@ -64,7 +67,18 @@ func _ready() -> void:
 	_build_main()
 	_build_custom()
 	if start_in_menu and not _race_started:
-		open.call_deferred(true)
+		_start.call_deferred()
+
+
+## Menu inicial. Se abriu numa pista diferente da escolhida (o jogo sempre começa no estádio),
+## carrega a escolhida antes.
+func _start() -> void:
+	var current := get_tree().current_scene
+	if current and current.scene_file_path != PlayerProfile.track_scene():
+		get_tree().paused = true
+		_go_to_track()
+		return
+	open(true)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -93,7 +107,8 @@ func open(start := false) -> void:
 	_restart_tween()
 	_tween.tween_property(_dim, "modulate:a", 1.0, slide_time)
 	_slide(_main_steps, true, true)
-	_focus_quietly.call_deferred(_main_steps[1].get_child(0))
+	_focus_quietly.call_deferred(_track_button if _focus_track else _first_button)
+	_focus_track = false
 
 
 func close() -> void:
@@ -118,16 +133,40 @@ func _build_main() -> void:
 	_main_steps.append(_add_step(_title, 0, true, Vector2(button_size.x, 56.0), false))
 	var entries := [
 		["RETOMAR", close],
+		["PISTA", func(): _change_track(1)],
 		["CUSTOMIZAR PILOTO", _open_custom],
 		["FECHAR JOGO", func(): get_tree().quit()],
 	]
 	for i in entries.size():
-		var button := _make_button(entries[i][0], 28, i == 2)
+		var button := _make_button(entries[i][0], 28, i == entries.size() - 1)
 		button.pressed.connect(entries[i][1])
 		_main_steps.append(_add_step(button, i + 1, true, button_size))
 		if i == 0:
 			_first_button = button
+		elif i == 1:
+			_track_button = button
+	_track_button.text = "PISTA:  < %s >" % PlayerProfile.track_name()
+	# Na pista, esquerda/direita também trocam.
+	_track_button.gui_input.connect(func(event: InputEvent):
+		for dir in [["ui_left", -1], ["ui_right", 1]]:
+			if event.is_action_pressed(dir[0]):
+				_track_button.accept_event()
+				_play(SFX_SELECT)
+				_change_track(dir[1]))
 	_link_focus(_main_steps.slice(1).map(func(step): return step.get_child(0)))
+
+
+## Troca a pista escolhida e carrega a cena dela (a corrida recomeça no menu inicial).
+func _change_track(step: int) -> void:
+	PlayerProfile.set_track(PlayerProfile.track_index + step)
+	_track_button.text = "PISTA:  < %s >" % PlayerProfile.track_name()
+	_race_started = false
+	_focus_track = true
+	_go_to_track.call_deferred()
+
+
+func _go_to_track() -> void:
+	get_tree().change_scene_to_file(PlayerProfile.track_scene())
 
 
 func _build_custom() -> void:
@@ -288,7 +327,7 @@ func _close_custom() -> void:
 	_restart_tween()
 	_slide(_custom_steps, false, false)
 	_slide(_main_steps, true, true)
-	_focus_quietly.call_deferred(_main_steps[2].get_child(0))
+	_focus_quietly.call_deferred(_main_steps[3].get_child(0))
 
 
 func _restart_tween() -> void:
