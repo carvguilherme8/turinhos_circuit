@@ -12,7 +12,19 @@ const VARIANTS := {
 	"water_tower": 1, "tractor": 1, "cow": 3, "toilet": 1, "flag": 4,
 }
 
+## Faixa de altura (m) cujos blocos formam a caixa de colisão de cada tipo; sem entrada = sem
+## colisão (a moto atravessa). Árvores: só o tronco; bandeira: só o mastro.
+const COLLIDERS := {
+	"oak": Vector2(0.0, 2.0), "ipe_yellow": Vector2(0.0, 2.0), "ipe_pink": Vector2(0.0, 2.0),
+	"eucalyptus": Vector2(0.0, 2.0), "pine": Vector2(0.0, 1.4), "rock": Vector2(0.0, 99.0),
+	"person": Vector2(0.0, 99.0), "tent": Vector2(0.0, 99.0), "hay": Vector2(0.0, 99.0),
+	"tires_black": Vector2(0.0, 99.0), "tires_white": Vector2(0.0, 99.0), "barn": Vector2(0.0, 99.0),
+	"water_tower": Vector2(0.0, 99.0), "tractor": Vector2(0.0, 99.0), "cow": Vector2(0.0, 99.0),
+	"toilet": Vector2(0.0, 99.0), "flag": Vector2(0.0, 1.9),
+}
+
 static var _meshes := {}
+static var _colliders := {}
 static var _material: StandardMaterial3D
 
 
@@ -45,7 +57,15 @@ static func mesh(model_name: String) -> ArrayMesh:
 		_: push_error("modelo voxel desconhecido: " + model_name)
 	var result := v.build(material())
 	_meshes[model_name] = result
+	if COLLIDERS.has(kind):
+		_colliders[model_name] = v.band_aabb(COLLIDERS[kind].x, COLLIDERS[kind].y)
 	return result
+
+
+## Caixa de colisão do modelo (no espaço do modelo); tamanho zero = sem colisão.
+static func collider(model_name: String) -> AABB:
+	mesh(model_name)
+	return _colliders.get(model_name, AABB())
 
 
 ## Nome de uma variante sorteada do tipo (ex.: "oak" -> "oak_3").
@@ -67,6 +87,7 @@ static func material() -> StandardMaterial3D:
 class Vox:
 	var size := 0.25  # tamanho do bloco (m)
 	var cells := {}  # Vector3i -> Color
+	var decor := {}  # blocos só de enfeite (sem colisão), ex.: flores caídas
 	var rng := RandomNumberGenerator.new()
 	var jitter := 0.06
 
@@ -76,6 +97,10 @@ class Vox:
 	func put(c: Vector3i, color: Color, amount := -1.0) -> void:
 		var j := jitter if amount < 0.0 else amount
 		cells[c] = color * (1.0 + rng.randf_range(-j, j))
+
+	func put_decor(c: Vector3i, color: Color) -> void:
+		put(c, color)
+		decor[c] = true
 
 	func erase(c: Vector3i) -> void:
 		cells.erase(c)
@@ -106,6 +131,21 @@ class Vox:
 					for y in range(y0, y1 + 1):
 						put(Vector3i(x, y, z), color)
 
+	var offset := Vector3.ZERO
+
+	## Caixa (no espaço do modelo) que envolve os blocos entre as alturas `y0` e `y1` (m).
+	func band_aabb(y0: float, y1: float) -> AABB:
+		var box := AABB()
+		var first := true
+		for c: Vector3i in cells:
+			var y := (c.y + offset.y) * size
+			if y < y0 - 0.001 or y > y1 or decor.has(c):
+				continue
+			var cell := AABB((Vector3(c) + offset) * size, Vector3.ONE * size)
+			box = cell if first else box.merge(cell)
+			first = false
+		return box
+
 	## Gera a malha: só as faces sem vizinho; base em y = 0, centro em x/z = 0.
 	func build(material: Material) -> ArrayMesh:
 		var lo := Vector3i(1 << 20, 1 << 20, 1 << 20)
@@ -113,7 +153,7 @@ class Vox:
 		for c in cells:
 			lo = Vector3i(mini(lo.x, c.x), mini(lo.y, c.y), mini(lo.z, c.z))
 			hi = Vector3i(maxi(hi.x, c.x), maxi(hi.y, c.y), maxi(hi.z, c.z))
-		var offset := Vector3(-(lo.x + hi.x + 1) * 0.5, -lo.y, -(lo.z + hi.z + 1) * 0.5)
+		offset = Vector3(-(lo.x + hi.x + 1) * 0.5, -lo.y, -(lo.z + hi.z + 1) * 0.5)
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var dirs := [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN, Vector3i.BACK, Vector3i.FORWARD]
@@ -185,7 +225,7 @@ static func _oak(v: Vox, flowering: bool, flower: Color) -> void:
 		for k in 40:
 			var a := r.randf() * TAU
 			var dist := r.randf_range(1.5, rx + 1.0)
-			v.put(Vector3i(int(cos(a) * dist), 0, int(sin(a) * dist)), flower)
+			v.put_decor(Vector3i(int(cos(a) * dist), 0, int(sin(a) * dist)), flower)
 
 
 static func _eucalyptus(v: Vox) -> void:

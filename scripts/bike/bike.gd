@@ -32,6 +32,8 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export var bike_texture: Texture2D
 ## A moto do jogador usa o visual escolhido no menu (número, uniforme e cor da moto).
 @export var use_player_profile: bool = true
+## No chão, quanto a moto deita junto com o chão inclinado para o lado (0 = sempre em pé).
+@export_range(0.0, 1.0) var ground_roll_follow: float = 0.0
 @export var rider_texture: Texture2D
 
 @export_group("Visual")
@@ -352,7 +354,7 @@ func _track_air_and_landing(delta: float) -> void:
 		air_time += delta
 	elif air_time > 0.0:
 		if air_time >= stats.min_air_time and _landing_timer < 0.0:
-			var angle_now := rad_to_deg(global_basis.y.angle_to(_ground_normal))
+			var angle_now := _alignment_angle()
 			if angle_now <= stats.crash_landing_angle and global_basis.y.dot(Vector3.UP) >= 0.0:
 				_evaluate_landing(angle_now)
 			else:
@@ -368,7 +370,7 @@ func _track_air_and_landing(delta: float) -> void:
 	# Confirmação de queda no pouso: fica com o melhor alinhamento do intervalo.
 	if _landing_timer >= 0.0:
 		if is_grounded():
-			_landing_best_angle = minf(_landing_best_angle, rad_to_deg(global_basis.y.angle_to(_ground_normal)))
+			_landing_best_angle = minf(_landing_best_angle, _alignment_angle())
 		_landing_timer += delta
 		if (front_grounded and rear_grounded) or _landing_timer >= stats.landing_window:
 			_landing_timer = -1.0
@@ -388,8 +390,20 @@ func _track_air_and_landing(delta: float) -> void:
 		_crash("passou do ponto numa roda só %d°" % one_wheel_degrees)
 
 
-## Compara o "para cima" da moto com a normal do chão onde ela tocou:
-## pousar inclinado junto com a rampa de descida conta como alinhado.
+## Quanto a moto está fora do alinhamento (graus): de frente, o nariz contra a inclinação
+## do chão (pousar inclinado junto com a rampa de descida conta como alinhado); de lado, a moto
+## contra a vertical (ela fica em pé mesmo em chão inclinado para o lado, como nas berms).
+func _alignment_angle() -> float:
+	var right := global_basis.x
+	var ground := _ground_normal - right * _ground_normal.dot(right)
+	var pitch_error := global_basis.y.angle_to(ground) if ground.length_squared() > 0.0001 else 0.0
+	var forward := -global_basis.z
+	var vertical := Vector3.UP - forward * Vector3.UP.dot(forward)
+	var roll_error := global_basis.y.angle_to(vertical) if vertical.length_squared() > 0.0001 else 0.0
+	return rad_to_deg(sqrt(pitch_error * pitch_error + roll_error * roll_error))
+
+
+## Compara o "para cima" da moto com o chão onde ela tocou (ver _alignment_angle).
 func _evaluate_landing(angle: float) -> void:
 	if trick_amount > 0.5:
 		_crash("pousou no meio da manobra")
@@ -472,7 +486,7 @@ func _record_safe_point() -> void:
 		return
 	if not (front_grounded and rear_grounded) or _ground_normal.y < 0.95:
 		return
-	if global_basis.y.angle_to(_ground_normal) > deg_to_rad(10.0):
+	if _alignment_angle() > 10.0:
 		return
 	var heading := -global_basis.z
 	heading.y = 0.0
@@ -617,9 +631,11 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 		av = _rider_weight_air(av, delta)
 
 	# Equilíbrio: só no eixo de rolagem (o pitch fica livre para suspensão e saltos).
+	# No chão a moto fica em pé em relação à vertical (não deita junto com berms e bordas
+	# inclinadas); `ground_roll_follow` > 0 a faz acompanhar um pouco a inclinação do chão.
 	# No ar, o whip deita a moto para o lado do comando.
 	var roll_axis := -global_basis.z
-	var target_up := _ground_normal
+	var target_up := Vector3.UP.slerp(_ground_normal, ground_roll_follow)
 	if not is_grounded():
 		target_up = Vector3.UP.rotated(roll_axis, _rider_side * deg_to_rad(stats.whip_roll_angle))
 	var target_up_flat := target_up - roll_axis * target_up.dot(roll_axis)
