@@ -44,7 +44,7 @@ SECTIONS = [
     ("T", 120.0, 20.0, 10.0, "esquerda com berm, subindo"),
     ("S", 45.0, 12.0, [("table", 0.4, 22.0, 2.2)], "mesa"),
     ("T", 150.0, 14.0, 12.0, "esquerda fechada"),
-    ("S", 40.0, 10.0, [("table", 0.4, 22.0, 2.0)], "step-down: mesa descendo"),
+    ("S", 40.0, 10.0, [("table", 0.28, 18.0, 1.6)], "step-down: mesa descendo"),
     ("T", -60.0, 25.0, 10.0, "direita rápida"),
     ("T", 150.0, 20.0, 10.0, "última curva, entra na reta da largada"),
 ]

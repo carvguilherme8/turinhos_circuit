@@ -1,4 +1,4 @@
-[gd_scene load_steps=37 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="camera"]
@@ -31,8 +31,6 @@
 [ext_resource type="Material" path="res://assets/materials/farm/track_dirt.tres" id="farm_track"]
 [ext_resource type="Material" path="res://assets/materials/farm/terrain.tres" id="farm_terrain"]
 [ext_resource type="Material" path="res://assets/materials/farm/fence.tres" id="farm_fence"]
-[ext_resource type="Material" path="res://assets/materials/farm/bark.tres" id="farm_bark"]
-[ext_resource type="Material" path="res://assets/materials/farm/leaves.tres" id="farm_leaves"]
 
 [sub_resource type="ShaderMaterial" id="SkyMat"]
 shader = ExtResource("sky_shader")
@@ -88,8 +86,6 @@ banner_material = ExtResource("banner")
 metal_material = ExtResource("metal")
 terrain_material = ExtResource("farm_terrain")
 fence_material = ExtResource("farm_fence")
-bark_material = ExtResource("farm_bark")
-leaves_material = ExtResource("farm_leaves")
 
 [node name="Bike" parent="." instance=ExtResource("bike")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0.8, 46)
