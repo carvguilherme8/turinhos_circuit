@@ -80,8 +80,7 @@ func _make_rain() -> GPUParticles3D:
 
 ## Troca a poeira da roda traseira de cada moto da cena por lama.
 func _muddy_bikes() -> void:
-	var scene := get_tree().current_scene if get_tree().current_scene else get_parent()
-	for node in scene.find_children("*", "GPUParticles3D", true, false):
+	for node in get_tree().root.find_children("*", "GPUParticles3D", true, false):
 		if node.name != "RearDust" or not (node.process_material is ParticleProcessMaterial):
 			continue
 		var mud := (node.process_material as ParticleProcessMaterial).duplicate() as ParticleProcessMaterial

@@ -7,6 +7,8 @@ Saída: assets/audio/sfx/
   ui_select.wav       dois bipes subindo (confirmar)
   ui_back.wav         dois bipes descendo (voltar / fechar)
   rain_loop.wav       chuva constante (ruído filtrado + gotas), loop sem emenda
+  fire_whoosh.wav     "fuuum" de fogo (passar pela argola)
+  wind_loop.wav       vento do deserto, loop sem emenda
 
 Uso: python tools/gen_sfx.py
 """
@@ -71,6 +73,43 @@ def rain(seconds=8.0, fade=0.6, seed=7):
     return [v / peak * 0.8 for v in out]
 
 
+def whoosh(seconds=0.9, seed=11):
+    """Ruído que cresce e some, com o "brilho" subindo (chama passando perto)."""
+    rnd = random.Random(seed)
+    n = int(RATE * seconds)
+    out = []
+    low = 0.0
+    for i in range(n):
+        t = i / n
+        cutoff = 0.05 + 0.5 * t  # o som fica mais aberto com o tempo
+        low += (rnd.uniform(-1.0, 1.0) - low) * cutoff
+        env = math.sin(math.pi * min(1.0, t * 1.4)) ** 2 if t < 0.72 else (1.0 - t) / 0.28 * 0.8
+        crackle = rnd.uniform(-1.0, 1.0) * 0.4 if rnd.random() < 0.004 else 0.0
+        out.append((low * 1.6 + crackle) * env * 0.7)
+    return out
+
+
+def wind(seconds=10.0, fade=1.0, seed=13):
+    """Vento: ruído grave que sobe e desce devagar (rajadas)."""
+    rnd = random.Random(seed)
+    n = int(RATE * (seconds + fade))
+    out = [0.0] * n
+    low = slow = 0.0
+    for i in range(n):
+        low += (rnd.uniform(-1.0, 1.0) - low) * 0.04
+        slow += (low - slow) * 0.004
+        gust = 0.55 + 0.45 * math.sin(i / RATE * 0.9) * math.sin(i / RATE * 0.37 + 1.0)
+        out[i] = (low - slow) * gust
+    m = int(RATE * seconds)
+    f = int(RATE * fade)
+    for i in range(f):
+        t = i / f
+        out[i] = out[i] * math.sin(t * math.pi / 2) + out[m + i] * math.cos(t * math.pi / 2)
+    out = out[:m]
+    peak = max(abs(v) for v in out)
+    return [v / peak * 0.7 for v in out]
+
+
 def save(name, samples):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name)
@@ -91,6 +130,8 @@ def main():
     save("ui_select.wav", blips([784.0, 1174.7], 0.07))
     save("ui_back.wav", blips([880.0, 587.3], 0.07))
     save("rain_loop.wav", rain())
+    save("fire_whoosh.wav", whoosh())
+    save("wind_loop.wav", wind())
 
 
 if __name__ == "__main__":

@@ -9,7 +9,8 @@ extends RefCounted
 const VARIANTS := {
 	"oak": 5, "eucalyptus": 3, "pine": 3, "ipe_yellow": 2, "ipe_pink": 2, "bush": 4, "rock": 4,
 	"person": 10, "tent": 4, "hay": 2, "tires_black": 2, "tires_white": 2, "barn": 1,
-	"water_tower": 1, "tractor": 1, "cow": 3, "toilet": 1, "flag": 4,
+	"water_tower": 1, "tractor": 1, "cow": 3, "toilet": 1, "flag": 4, "saguaro": 4, "barrel_cactus": 2, "tumbleweed": 2, "rock_red": 3,
+	"drums": 3, "container": 3, "skull": 1,
 }
 
 ## Faixa de altura (m) cujos blocos formam a caixa de colisão de cada tipo; sem entrada = sem
@@ -20,7 +21,9 @@ const COLLIDERS := {
 	"person": Vector2(0.0, 99.0), "tent": Vector2(0.0, 99.0), "hay": Vector2(0.0, 99.0),
 	"tires_black": Vector2(0.0, 99.0), "tires_white": Vector2(0.0, 99.0), "barn": Vector2(0.0, 99.0),
 	"water_tower": Vector2(0.0, 99.0), "tractor": Vector2(0.0, 99.0), "cow": Vector2(0.0, 99.0),
-	"toilet": Vector2(0.0, 99.0), "flag": Vector2(0.0, 1.9),
+	"toilet": Vector2(0.0, 99.0), "flag": Vector2(0.0, 1.9), "saguaro": Vector2(0.0, 1.4),
+	"barrel_cactus": Vector2(0.0, 99.0), "rock_red": Vector2(0.0, 99.0), "drums": Vector2(0.0, 99.0),
+	"container": Vector2(0.0, 99.0),
 }
 
 static var _meshes := {}
@@ -54,6 +57,13 @@ static func mesh(model_name: String) -> ArrayMesh:
 		"cow": _cow(v)
 		"toilet": _toilet(v)
 		"flag": _flag(v, seed_value)
+		"saguaro": _saguaro(v)
+		"barrel_cactus": _barrel_cactus(v)
+		"tumbleweed": _tumbleweed(v)
+		"rock_red": _rock_red(v)
+		"drums": _drums(v, seed_value)
+		"container": _container(v, seed_value)
+		"skull": _skull(v)
 		_: push_error("modelo voxel desconhecido: " + model_name)
 	var result := v.build(material())
 	_meshes[model_name] = result
@@ -66,6 +76,45 @@ static func mesh(model_name: String) -> ArrayMesh:
 static func collider(model_name: String) -> AABB:
 	mesh(model_name)
 	return _colliders.get(model_name, AABB())
+
+
+## Cria, dentro de `parent`, um MultiMeshInstance por modelo (todas as cópias desenhadas de
+## uma vez) e uma caixa de colisão por cópia (num StaticBody "PropsBody").
+## `groups`: nome do modelo -> Array[Transform3D].
+static func spawn(parent: Node3D, groups: Dictionary) -> void:
+	var body := parent.get_node_or_null("PropsBody") as StaticBody3D
+	if body == null:
+		body = StaticBody3D.new()
+		body.name = "PropsBody"
+		parent.add_child(body)
+	for model in groups:
+		var transforms: Array[Transform3D] = groups[model]
+		var box := collider(model)
+		if box.size != Vector3.ZERO:
+			for t in transforms:
+				var shape := CollisionShape3D.new()
+				var box_shape := BoxShape3D.new()
+				box_shape.size = box.size * t.basis.get_scale()
+				shape.shape = box_shape
+				shape.transform = Transform3D(t.basis.orthonormalized(), t * box.get_center())
+				body.add_child(shape)
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.mesh = mesh(model)
+		multimesh.instance_count = transforms.size()
+		for k in transforms.size():
+			multimesh.set_instance_transform(k, transforms[k])
+		var instance := MultiMeshInstance3D.new()
+		instance.name = "Props_" + model
+		instance.multimesh = multimesh
+		parent.add_child(instance)
+
+
+## Junta uma cópia de `model` (girada `yaw`, no tamanho `scale`, em `position`) em `groups`.
+static func add(groups: Dictionary, model: String, position: Vector3, yaw: float, scale := 1.0) -> void:
+	if not groups.has(model):
+		groups[model] = [] as Array[Transform3D]
+	groups[model].append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale), position))
 
 
 ## Nome de uma variante sorteada do tipo (ex.: "oak" -> "oak_3").
@@ -546,3 +595,110 @@ static func _cow(v: Vox) -> void:
 	v.put(Vector3i(3, 16, -7), black); v.put(Vector3i(7, 16, -7), black)
 	v.put(Vector3i(1, 19, -3), Color(0.9, 0.86, 0.7)); v.put(Vector3i(9, 19, -3), Color(0.9, 0.86, 0.7))
 	v.box(Vector3i(5, 10, 17), Vector3i(5, 15, 17), white)
+
+
+# ---------------------------------------------------------------- deserto
+
+static func _saguaro(v: Vox) -> void:
+	v.size = 0.25
+	var r := v.rng
+	var green := Color(0.3, 0.52, 0.3)
+	var h := r.randi_range(14, 22)
+	# tronco 2x2 com sulcos (blocos mais escuros) e espinhos claros
+	for y in h:
+		for x in 2:
+			for z in 2:
+				v.put(Vector3i(x, y, z), green.darkened(0.12) if (x + z + y) % 3 == 0 else green)
+	v.box(Vector3i(0, h, 0), Vector3i(1, h, 1), green.lightened(0.1))
+	var sides: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	for k in r.randi_range(1, 3):
+		var side := sides[r.randi() % 4]
+		var y0 := r.randi_range(5, h - 5)
+		var out := r.randi_range(2, 3)
+		var base := Vector3i(0, y0, 0) + (side * 2 if side.x + side.z > 0 else side)
+		for k2 in out:
+			v.put(base + side * k2, green)
+		var top := base + side * (out - 1)
+		for y in range(1, r.randi_range(4, 7)):
+			v.put(top + Vector3i(0, y, 0), green)
+	var keys := v.cells.keys()
+	for k in 30:
+		v.put(keys[r.randi() % keys.size()], Color(0.86, 0.84, 0.66))
+	if r.randf() < 0.5:
+		v.put(Vector3i(0, h + 1, 0), Color(0.98, 0.9, 0.5))
+
+
+static func _barrel_cactus(v: Vox) -> void:
+	v.size = 0.125
+	var green := Color(0.34, 0.56, 0.3)
+	var fill := func(c: Vector3i, _d: Vector3) -> Color:
+		return green.darkened(0.15) if (c.x + c.z) % 2 == 0 else green
+	v.blob(Vector3(0, 3, 0), Vector3(3.5, 3.5, 3.5), fill, 0.05)
+	var petals: Array[Color] = [Color(0.98, 0.4, 0.5), Color(0.98, 0.85, 0.3)]
+	for k in 5:
+		v.put(Vector3i(v.rng.randi_range(-1, 1), 7, v.rng.randi_range(-1, 1)), petals[k % 2])
+
+
+static func _tumbleweed(v: Vox) -> void:
+	v.size = 0.15
+	var dry := Color(0.66, 0.54, 0.34)
+	var r := v.rng
+	var fill := func(_c: Vector3i, _d: Vector3) -> Color:
+		return dry.darkened(r.randf_range(0.0, 0.25))
+	v.blob(Vector3(0, 3, 0), Vector3(3.2, 3.0, 3.2), fill, 0.25)
+	# vazado: tira blocos ao acaso
+	for c in v.cells.keys():
+		if r.randf() < 0.45:
+			v.erase(c)
+
+
+static func _rock_red(v: Vox) -> void:
+	v.size = 0.4
+	var r := v.rng
+	var red := Color(0.72, 0.38, 0.24)
+	var fill := func(c: Vector3i, _d: Vector3) -> Color:
+		return red.darkened(0.12) if c.y % 3 == 0 else red.lightened(r.randf_range(-0.05, 0.08))
+	v.blob(Vector3(0, 2.5, 0), Vector3(r.randf_range(3, 5), r.randf_range(2.5, 4), r.randf_range(3, 4.5)), fill, 0.2)
+	for k in r.randi_range(1, 3):
+		v.blob(Vector3(r.randf_range(-5, 5), 1.0, r.randf_range(-5, 5)), Vector3(1.6, 1.4, 1.6), fill, 0.25)
+
+
+static func _drums(v: Vox, index: int) -> void:
+	v.size = 0.1
+	var colors: Array[Color] = [Color("e83a3a"), Color("2a5ce8"), Color("f0d23c")]
+	var spots: Array[Vector2i] = [Vector2i(0, 0), Vector2i(7, 0), Vector2i(3, 6)]
+	for k in 3:
+		var color := colors[(index + k) % colors.size()]
+		var p := spots[k]
+		v.cylinder(Vector3(p.x + 3, 0, p.y + 3), 3.2, 0, 8, color)
+		v.cylinder(Vector3(p.x + 3, 0, p.y + 3), 3.3, 3, 3, color.darkened(0.3))
+		v.cylinder(Vector3(p.x + 3, 0, p.y + 3), 3.3, 6, 6, color.darkened(0.3))
+	v.cylinder(Vector3(5, 0, 3), 3.2, 9, 17, colors[(index + 1) % colors.size()].lightened(0.1))
+
+
+static func _container(v: Vox, index: int) -> void:
+	v.size = 0.25
+	var colors: Array[Color] = [Color(0.2, 0.42, 0.7), Color(0.72, 0.24, 0.18), Color(0.85, 0.6, 0.15)]
+	var color := colors[index % colors.size()]
+	for x in 10:
+		for y in 10:
+			for z in 24:
+				if x == 0 or x == 9 or y == 0 or y == 9 or z == 0 or z == 23:
+					var rib := (z % 3 == 0) and (x == 0 or x == 9)
+					v.put(Vector3i(x, y, z), color.darkened(0.2) if rib else color)
+	# portas no fundo
+	for x in range(1, 9):
+		for y in range(1, 9):
+			v.put(Vector3i(x, y, 24), color.darkened(0.12) if x != 4 else Color(0.7, 0.7, 0.7))
+
+
+static func _skull(v: Vox) -> void:
+	v.size = 0.08
+	var bone := Color(0.92, 0.9, 0.82)
+	v.box(Vector3i(0, 0, 0), Vector3i(5, 4, 7), bone)
+	v.box(Vector3i(1, 0, -2), Vector3i(4, 2, -1), bone)
+	v.put(Vector3i(1, 3, 0), Color(0.1, 0.1, 0.1))
+	v.put(Vector3i(4, 3, 0), Color(0.1, 0.1, 0.1))
+	for k in 4:
+		v.put(Vector3i(-1 - k, 4 + k / 2, 5), bone)
+		v.put(Vector3i(6 + k, 4 + k / 2, 5), bone)

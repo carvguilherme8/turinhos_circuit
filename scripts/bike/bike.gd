@@ -34,6 +34,8 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export var use_player_profile: bool = true
 ## No chão, quanto a moto deita junto com o chão inclinado para o lado (0 = sempre em pé).
 @export_range(0.0, 1.0) var ground_roll_follow: float = 0.0
+## Chão mais inclinado que isto (normal.y menor) vira a referência de "em pé" (looping, paredes).
+@export_range(0.0, 1.0) var steep_ground: float = 0.6
 @export var rider_texture: Texture2D
 
 @export_group("Visual")
@@ -379,7 +381,13 @@ func _track_air_and_landing(delta: float) -> void:
 				return
 
 	if not is_crashed and get_contact_count() > 0:
-		var tilt := rad_to_deg(global_basis.y.angle_to(Vector3.UP))
+		# Tombada = deitada de lado (rolagem); de nariz para baixo numa descida íngreme não conta.
+		var forward_axis := -global_basis.z
+		var reference := _upright_reference()
+		var upright := reference - forward_axis * reference.dot(forward_axis)
+		var tilt := rad_to_deg(global_basis.y.angle_to(upright)) if upright.length_squared() > 0.0001 else 0.0
+		if global_basis.y.dot(reference) < 0.0:
+			tilt = 180.0  # de cabeça para baixo
 		if tilt > stats.crash_tilt_angle:
 			_crash("encostou tombada %d°" % tilt)
 
@@ -398,9 +406,18 @@ func _alignment_angle() -> float:
 	var ground := _ground_normal - right * _ground_normal.dot(right)
 	var pitch_error := global_basis.y.angle_to(ground) if ground.length_squared() > 0.0001 else 0.0
 	var forward := -global_basis.z
-	var vertical := Vector3.UP - forward * Vector3.UP.dot(forward)
+	var reference := _upright_reference()
+	var vertical := reference - forward * reference.dot(forward)
 	var roll_error := global_basis.y.angle_to(vertical) if vertical.length_squared() > 0.0001 else 0.0
 	return rad_to_deg(sqrt(pitch_error * pitch_error + roll_error * roll_error))
+
+
+## "Em pé" para a moto: a vertical do mundo; mas em chão muito inclinado (paredes, looping)
+## e com as rodas nele, o próprio chão (senão ela tentaria se desvirar no meio do looping).
+func _upright_reference() -> Vector3:
+	if is_grounded() and _ground_normal.y < steep_ground:
+		return _ground_normal
+	return Vector3.UP
 
 
 ## Compara o "para cima" da moto com o chão onde ela tocou (ver _alignment_angle).
@@ -635,7 +652,7 @@ func _steer_and_balance(forward: Vector3, delta: float) -> void:
 	# inclinadas); `ground_roll_follow` > 0 a faz acompanhar um pouco a inclinação do chão.
 	# No ar, o whip deita a moto para o lado do comando.
 	var roll_axis := -global_basis.z
-	var target_up := Vector3.UP.slerp(_ground_normal, ground_roll_follow)
+	var target_up := _upright_reference().slerp(_ground_normal, ground_roll_follow)
 	if not is_grounded():
 		target_up = Vector3.UP.rotated(roll_axis, _rider_side * deg_to_rad(stats.whip_roll_angle))
 	var target_up_flat := target_up - roll_axis * target_up.dot(roll_axis)

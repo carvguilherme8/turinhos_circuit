@@ -9,6 +9,7 @@ const SAVE_PATH := "user://player_profile.cfg"
 const TRACKS: Array[Array] = [
 	["ESTÁDIO", "res://scenes/tracks/stadium_circuit.tscn"],
 	["FAZENDA", "res://scenes/tracks/farm_circuit.tscn"],
+	["DESERTO", "res://scenes/tracks/desert_park.tscn"],
 ]
 
 ## Cores do uniforme: [principal, detalhe]. O detalhe contrasta com a principal.

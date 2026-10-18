@@ -104,7 +104,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func open(start := false) -> void:
 	_starting = start
 	_title.text = "TURINHOS CIRCUIT" if start else "PAUSA"
-	_first_button.text = "CORRER" if start else "RETOMAR"
+	# Mapa sem corrida (andar livre): "ANDAR" em vez de "CORRER".
+	var scene := get_tree().current_scene
+	var free_roam := scene != null and scene.find_child("RaceManager", false, false) == null
+	_first_button.text = ("ANDAR" if free_roam else "CORRER") if start else "RETOMAR"
 	get_tree().paused = true
 	_root.visible = true
 	_dim.modulate.a = 0.0

@@ -829,36 +829,9 @@ func _add_instance(groups: Dictionary, model: String, p: Vector2, yaw: float, sc
 	groups[model].append(t)
 
 
-## Um MultiMeshInstance por modelo voxel (desenha todas as cópias de uma vez), mais uma caixa
-## de colisão por cópia (tronco das árvores, pneus, fardos, gente, construções...).
+## Um MultiMeshInstance por modelo voxel, com colisão por cópia (ver VoxelProps.spawn).
 func _add_groups(groups: Dictionary) -> void:
-	var body := _generated.get_node_or_null("PropsBody") as StaticBody3D
-	if body == null:
-		body = StaticBody3D.new()
-		body.name = "PropsBody"
-		_generated.add_child(body)
-	for model in groups:
-		var transforms: Array[Transform3D] = groups[model]
-		var box := VoxelProps.collider(model)
-		if box.size != Vector3.ZERO:
-			for t in transforms:
-				var shape := CollisionShape3D.new()
-				var box_shape := BoxShape3D.new()
-				var scale := t.basis.get_scale()
-				box_shape.size = box.size * scale
-				shape.shape = box_shape
-				shape.transform = Transform3D(t.basis.orthonormalized(), t * box.get_center())
-				body.add_child(shape)
-		var multimesh := MultiMesh.new()
-		multimesh.transform_format = MultiMesh.TRANSFORM_3D
-		multimesh.mesh = VoxelProps.mesh(model)
-		multimesh.instance_count = transforms.size()
-		for k in transforms.size():
-			multimesh.set_instance_transform(k, transforms[k])
-		var instance := MultiMeshInstance3D.new()
-		instance.name = "Props_" + model
-		instance.multimesh = multimesh
-		_generated.add_child(instance)
+	VoxelProps.spawn(_generated, groups)
 
 
 ## Costelas iguais às do estádio: rampas de ondulação (Ramp com is_bump), assentadas na

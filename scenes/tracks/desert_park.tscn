@@ -1,0 +1,449 @@
+[gd_scene load_steps=46 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="camera"]
+[ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="hud"]
+[ext_resource type="Script" path="res://scripts/ui/landing_popup.gd" id="popup"]
+[ext_resource type="Material" path="res://assets/materials/stadium/banner.tres" id="banner"]
+[ext_resource type="Material" path="res://assets/materials/stadium/checker.tres" id="checker"]
+[ext_resource type="Material" path="res://assets/materials/stadium/metal.tres" id="metal"]
+[ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="hints"]
+[ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="switcher"]
+[ext_resource type="Shader" path="res://assets/materials/stadium/pixel_sky.gdshader" id="sky_shader"]
+[ext_resource type="Script" path="res://scripts/tracks/voxel_clouds.gd" id="clouds"]
+[ext_resource type="Script" path="res://scripts/race/bot_driver.gd" id="bot_driver"]
+[ext_resource type="Script" path="res://scripts/race/race_manager.gd" id="race_manager"]
+[ext_resource type="Script" path="res://scripts/ui/race_hud.gd" id="race_hud"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_3.png" id="tex_bike_3"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_3.png" id="tex_rider_3"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_5.png" id="tex_bike_5"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_5.png" id="tex_rider_5"]
+[ext_resource type="Texture2D" path="res://assets/models/bikes/motocross/motocross_7.png" id="tex_bike_7"]
+[ext_resource type="Texture2D" path="res://assets/models/riders/rider/rider_7.png" id="tex_rider_7"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_beep.wav" id="sfx_beep"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/countdown_go.wav" id="sfx_go"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/stadium_crowd.ogg" id="sfx_crowd"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/crowd_cheer_1.ogg" id="sfx_cheer_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/crowd_cheer_2.ogg" id="sfx_cheer_2"]
+[ext_resource type="Script" path="res://scripts/race/crowd_audio.gd" id="crowd_audio"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="pause_menu"]
+[ext_resource type="Script" path="res://scripts/tracks/outdoor_track.gd" id="outdoor_track"]
+[ext_resource type="Material" path="res://assets/materials/farm/track_dirt.tres" id="farm_track"]
+[ext_resource type="Material" path="res://assets/materials/farm/terrain.tres" id="farm_terrain"]
+[ext_resource type="Material" path="res://assets/materials/farm/fence.tres" id="farm_fence"]
+[ext_resource type="Script" path="res://scripts/tracks/weather_rain.gd" id="weather_rain"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/rain_loop.wav" id="sfx_rain"]
+[ext_resource type="Script" path="res://scripts/tracks/desert_park.gd" id="desert_park"]
+[ext_resource type="Material" path="res://assets/materials/desert/terrain.tres" id="desert_terrain"]
+[ext_resource type="Material" path="res://assets/materials/desert/ramp_dirt.tres" id="ramp_dirt"]
+[ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
+[ext_resource type="Script" path="res://scripts/tracks/fire_ring.gd" id="fire_ring"]
+[ext_resource type="Script" path="res://scripts/tracks/loop.gd" id="loop"]
+[ext_resource type="Script" path="res://scripts/ui/free_roam_hud.gd" id="free_roam_hud"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_whoosh.wav" id="sfx_whoosh"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/wind_loop.wav" id="sfx_wind"]
+
+[sub_resource type="ShaderMaterial" id="SkyMat"]
+shader = ExtResource("sky_shader")
+shader_parameter/top_color = Color(0.16, 0.4, 0.84, 1)
+shader_parameter/mid_color = Color(0.42, 0.64, 0.94, 1)
+shader_parameter/horizon_color = Color(0.96, 0.82, 0.6, 1)
+shader_parameter/ground_color = Color(0.8, 0.6, 0.4, 1)
+shader_parameter/sun_color = Color(1, 0.92, 0.72, 1)
+shader_parameter/sun_size = 0.05
+shader_parameter/sun_glow = 0.3
+shader_parameter/star_density = 0.0
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+process_mode = 2
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+ambient_light_energy = 1.0
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.04
+fog_enabled = true
+fog_light_color = Color(0.92, 0.8, 0.62, 1)
+fog_density = 0.0032
+fog_sky_affect = 0.25
+
+[node name="DesertPark" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, 0.3536, -0.3536, 0, 0.7071, 0.7071, 0.5, -0.6124, 0.6124, 0, 30, 0)
+light_color = Color(1, 0.93, 0.8, 1)
+light_energy = 1.3
+shadow_enabled = true
+directional_shadow_max_distance = 150.0
+
+[node name="Clouds" type="Node3D" parent="."]
+script = ExtResource("clouds")
+color = Color(1, 0.98, 0.95, 1)
+glow_color = Color(1, 0.85, 0.7, 1)
+glow_energy = 0.1
+coverage = 0.14
+altitude = 95.0
+
+[node name="Park" type="Node3D" parent="."]
+script = ExtResource("desert_park")
+mesas = Array[Vector4]([Vector4(58, -88, 22.0, 9.0), Vector4(-95, -70, 16.0, 14.0), Vector4(-100, 75, 12.0, 11.0), Vector4(100, 95, 14.0, 12.0)])
+keep_out = PackedVector3Array(0.0, 80.0, 18.0, 34.0, 58.0, 8.0, -34.0, 58.0, 8.0, 0.0, -3.0, 49.0, 0.0, -56.0, 22.0, -56.0, 28.0, 20.0, 67.0, 40.0, 22.0, -66.0, -39.0, 37.0, 30.0, -33.0, 37.0, -26.0, -80.5, 34.5, 58.0, -45.0, 14.0, 58.0, -125.0, 22.0)
+container_spots = PackedVector3Array(-29, -68, 90, -23, -68, 90, -40, -66, 15, -12, -72, -20)
+terrain_material = ExtResource("desert_terrain")
+
+[node name="Features" type="Node3D" parent="."]
+
+[node name="Ramps" type="Node3D" parent="Features"]
+
+[node name="Loops" type="Node3D" parent="Features"]
+
+[node name="Rings" type="Node3D" parent="Features"]
+
+[node name="Argola_Largada" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 2.75, 66.00)
+script = ExtResource("fire_ring")
+radius = 3.3
+stand_height = 0.0
+
+[node name="Argola_Leste" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, 34.00, 2.75, 58.00)
+script = ExtResource("fire_ring")
+radius = 3.3
+stand_height = 0.0
+
+[node name="Argola_Oeste" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, 0.9397, -34.00, 2.75, 58.00)
+script = ExtResource("fire_ring")
+radius = 3.3
+stand_height = 0.0
+
+[node name="Mega_Kicker" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, 40.00)
+script = ExtResource("ramp")
+up_length = 22
+top_length = 0.0
+down_length = 0.0
+height = 9
+width = 9.0
+base_radius = 8
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Mega_Pouso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, 4.00)
+script = ExtResource("ramp")
+up_length = 0.0
+top_length = 4.0
+down_length = 26.0
+height = 7.0
+width = 9.0
+base_radius = 2.0
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Mega_Argola" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 11.50, 9.10)
+script = ExtResource("fire_ring")
+radius = 4.2
+stand_height = 0.0
+
+[node name="Lombada1" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -38.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Lombada2" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -45.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Lombada3" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -52.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Lombada4" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -59.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Lombada5" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -66.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Lombada6" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0, -73.00)
+script = ExtResource("ramp")
+up_length = 2.6
+top_length = 0.0
+down_length = 2.6
+height = 1.1
+width = 9
+base_radius = 1.0
+crest_radius = 0.8
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Argola_Ritmo" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 2.75, -88.00)
+script = ExtResource("fire_ring")
+radius = 3.3
+stand_height = 0.0
+
+[node name="Looping" type="Node3D" parent="Features/Loops"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.00, 0, 32.00)
+script = ExtResource("loop")
+radius = 7.5
+offset = 8.5
+
+[node name="LoopingGrande" type="Node3D" parent="Features/Loops"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.00, 0, 44.00)
+script = ExtResource("loop")
+radius = 9.0
+offset = 10.0
+
+[node name="SaltoA_Kicker" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.00, 0, -8.00)
+script = ExtResource("ramp")
+up_length = 9
+top_length = 0.0
+down_length = 0.0
+height = 4.5
+width = 9.0
+base_radius = 2
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="SaltoA_Pouso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.00, 0, -29.00)
+script = ExtResource("ramp")
+up_length = 0.0
+top_length = 3.0
+down_length = 18.0
+height = 4.0
+width = 9.0
+base_radius = 2.0
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="SaltoA_Argola" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.00, 7.60, -25.70)
+script = ExtResource("fire_ring")
+radius = 3.6
+stand_height = 0.0
+
+[node name="SaltoB_Kicker" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.00, 0, -2.00)
+script = ExtResource("ramp")
+up_length = 9
+top_length = 0.0
+down_length = 0.0
+height = 4.5
+width = 9.0
+base_radius = 2
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="SaltoB_Pouso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.00, 0, -23.00)
+script = ExtResource("ramp")
+up_length = 0.0
+top_length = 3.0
+down_length = 18.0
+height = 4.0
+width = 9.0
+base_radius = 2.0
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="SaltoB_Argola" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.00, 7.60, -19.70)
+script = ExtResource("fire_ring")
+radius = 3.6
+stand_height = 0.0
+
+[node name="Conteiner_Kicker" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -26.00, 0, -52.00)
+script = ExtResource("ramp")
+up_length = 8
+top_length = 0.0
+down_length = 0.0
+height = 3.2
+width = 9.0
+base_radius = 3
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Conteiner_Pouso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -26.00, 0, -72.90)
+script = ExtResource("ramp")
+up_length = 0.0
+top_length = 2.0
+down_length = 14.0
+height = 3.0
+width = 9.0
+base_radius = 2.0
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Mesa_Acesso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 58.00, 0, -24.00)
+script = ExtResource("ramp")
+up_length = 40
+top_length = 4
+down_length = 0.0
+height = 9
+width = 9
+base_radius = 6
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Argola_Penhasco" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 58.00, 9.60, -116.00)
+script = ExtResource("fire_ring")
+radius = 3.8
+stand_height = 0.0
+
+[node name="Mesa_Pouso" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 58.00, 0, -114.00)
+script = ExtResource("ramp")
+up_length = 0.0
+top_length = 0.0
+down_length = 24
+height = 6
+width = 9.0
+base_radius = 2.0
+crest_radius = 0.7
+is_bump = false
+material = ExtResource("ramp_dirt")
+
+[node name="Bike" parent="." instance=ExtResource("bike")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 92)
+
+[node name="ChaseCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 98)
+current = true
+fov = 70.0
+far = 900.0
+script = ExtResource("camera")
+target = NodePath("../Bike")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="DebugLabel" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 620.0
+offset_bottom = 100.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 20
+script = ExtResource("hud")
+bike = NodePath("../../Bike")
+
+[node name="LandingPopup" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
+anchor_right = 1.0
+offset_top = 180.0
+offset_bottom = 250.0
+horizontal_alignment = 1
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 44
+script = ExtResource("popup")
+bike = NodePath("../../Bike")
+
+[node name="ControlHints" type="Label" parent="HUD"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -124.0
+offset_right = 1000.0
+offset_bottom = -16.0
+grow_vertical = 0
+vertical_alignment = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 18
+script = ExtResource("hints")
+
+[node name="CameraSwitcher" type="Node" parent="." node_paths=PackedStringArray("bike", "chase_camera")]
+script = ExtResource("switcher")
+bike = NodePath("../Bike")
+chase_camera = NodePath("../ChaseCamera")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("pause_menu")
+
+[node name="FreeRoamHud" type="Control" parent="HUD" node_paths=PackedStringArray("bike", "rings_root")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("free_roam_hud")
+bike = NodePath("../../Bike")
+rings_root = NodePath("../../Features/Rings")
+ring_sound = ExtResource("sfx_whoosh")
+
+[node name="Wind" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("sfx_wind")
+volume_db = -16.0
+autoplay = true
