@@ -154,14 +154,27 @@ func _build_terrain() -> void:
 	shape.shape = faces
 	body.add_child(shape)
 	_generated.add_child(body)
-	# chão sem fim em volta, mais alto que o vale (os paredões o escondem)
+	# chão sem fim em volta do mapa, na altura do topo dos paredões: uma moldura (só fora do
+	# quadrado do terreno), senão vista de cima cobriria o vale.
+	var y := cliff_height - 0.5
+	var r := map_half_size - cell * 0.5
+	var far := 3000.0
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_color(Color.BLACK)
+	st.set_normal(Vector3.UP)
+	for q: Rect2 in [Rect2(-far, -far, far * 2.0, far - r), Rect2(-far, r, far * 2.0, far - r),
+			Rect2(-far, -r, far - r, r * 2.0), Rect2(r, -r, far - r, r * 2.0)]:
+		var c0 := Vector3(q.position.x, y, q.position.y)
+		var c1 := Vector3(q.end.x, y, q.position.y)
+		var c2 := Vector3(q.end.x, y, q.end.y)
+		var c3 := Vector3(q.position.x, y, q.end.y)
+		for v in [c0, c1, c2, c0, c2, c3]:
+			st.add_vertex(v)
+	st.set_material(terrain_material)
 	var outer := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2.ONE * 3000.0
-	plane.material = terrain_material
-	outer.mesh = plane
-	outer.position.y = cliff_height - 0.5
 	outer.name = "OuterGround"
+	outer.mesh = st.commit()
 	_generated.add_child(outer)
 
 

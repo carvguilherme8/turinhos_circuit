@@ -3,14 +3,17 @@ extends Node3D
 ## Looping: pista em espiral que dá uma volta completa na vertical. A saída fica deslocada para
 ## o lado (`offset`), para não bater na entrada. Entra-se pela frente, andando para -Z, a partir
 ## da origem (no chão).
-## Arcade: enquanto a moto está dentro do looping, com velocidade, o looping a segura contra a
-## pista (`stick`) e mantém uma velocidade mínima (`carry_speed`) para ela completar a volta.
+## Arcade, só enquanto uma roda da moto está no piso do looping e ela anda acima de
+## `min_speed`: ajuda um pouco a segurá-la na pista (a velocidade, pela força centrífuga, faz a
+## maior parte; o looping só cobre uma falta de até `hold_assist` vezes a gravidade), alivia a
+## gravidade que a freia na subida (`climb_assist`) e alinha a direção com a curva da espiral.
+## Devagar demais, falta força e a moto cai, como na vida real.
 
 @export var radius: float = 7.0:
 	set(value):
 		radius = value
 		_queue_rebuild()
-@export var width: float = 6.0:
+@export var width: float = 7.0:
 	set(value):
 		width = value
 		_queue_rebuild()
@@ -23,20 +26,25 @@ extends Node3D
 		segments = value
 		_queue_rebuild()
 @export var rail_height: float = 0.8
+## Altura do piso acima do chão (evita o piso e o chão "brigarem" na tela); as retas de
+## entrada e saída descem até o chão em rampinha.
+@export var lift: float = 0.06
 ## Retas de entrada e saída, no chão (m).
 @export var lead: float = 4.0
 @export var deck_colors: PackedColorArray = PackedColorArray([Color("e83a3a"), Color("f2f2ec")])
 @export var rail_color: Color = Color("f0d23c")
 @export var frame_color: Color = Color(0.32, 0.33, 0.36)
-## Física arcade: empurrão contra a pista (m/s²), velocidade mínima mantida dentro do looping
-## e a velocidade abaixo da qual o looping "solta" a moto (ela cai, como na vida real).
-@export var stick: float = 32.0
-@export var carry_speed: float = 15.0
-@export var min_speed: float = 8.0
+## Velocidade (ao longo da pista) abaixo da qual o looping não ajuda mais: a moto cai.
+@export var min_speed: float = 7.0
+## Fração da gravidade que freia a moto na subida que o looping cancela (0 = nada, 1 = toda).
+@export_range(0.0, 1.0) var climb_assist: float = 0.3
+## Quanto da gravidade o looping pode compensar além da força centrífuga (0 = física pura).
+@export_range(0.0, 1.0) var hold_assist: float = 0.5
 
 var _generated: Node3D
 var _rebuild_queued := false
 var _bikes: Array[Node] = []
+var _deck_body: StaticBody3D
 
 
 func _ready() -> void:
@@ -60,7 +68,18 @@ func _find_bikes() -> void:
 
 ## Ponto da pista no ângulo `a` (0 = embaixo, na entrada; 2π = embaixo, na saída).
 func _point(a: float) -> Vector3:
-	return Vector3(offset * a / TAU, radius * (1.0 - cos(a)), -radius * sin(a))
+	return Vector3(_side(a), radius * (1.0 - cos(a)), -radius * sin(a))
+
+
+## Deslocamento lateral da espiral no ângulo `a`: suave nas pontas, para a entrada e a saída
+## ficarem retas (a moto sai alinhada, sem desviar).
+func _side(a: float) -> float:
+	return offset * (a - sin(a)) / TAU
+
+
+## Direção da pista no ângulo `a` (derivada de _point).
+func _tangent_at(a: float) -> Vector3:
+	return Vector3(offset * (1.0 - cos(a)) / TAU, radius * sin(a), -radius * cos(a)).normalized()
 
 
 ## Normal da pista (para o centro do looping).
@@ -80,14 +99,14 @@ func _rebuild() -> void:
 	var rows: Array = []
 	var lead_steps := 4
 	for k in lead_steps:
-		var z := lead * (1.0 - float(k) / lead_steps)
-		rows.append([Vector3(0, 0, z), Vector3.UP, Vector3(0, 0, -1)])
+		var t := float(k) / lead_steps
+		rows.append([Vector3(0, lift * t, lead * (1.0 - t)), Vector3.UP, Vector3(0, 0, -1)])
 	for i in segments + 1:
 		var a := TAU * i / segments
-		var tangent := Vector3(offset / TAU, radius * sin(a), -radius * cos(a)).normalized()
-		rows.append([_point(a), _normal(a), tangent])
+		rows.append([_point(a) + _normal(a) * lift, _normal(a), _tangent_at(a)])
 	for k in range(1, lead_steps + 1):
-		rows.append([Vector3(offset, 0, -lead * float(k) / lead_steps), Vector3.UP, Vector3(0, 0, -1)])
+		var t := float(k) / lead_steps
+		rows.append([Vector3(offset, lift * (1.0 - t), -lead * t), Vector3.UP, Vector3(0, 0, -1)])
 
 	var deck := SurfaceTool.new()
 	deck.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -123,6 +142,7 @@ func _rebuild() -> void:
 	_generated.add_child(mesh)
 
 	var body := StaticBody3D.new()
+	_deck_body = body
 	body.name = "DeckBody"
 	var shape := CollisionShape3D.new()
 	var concave := ConcavePolygonShape3D.new()
@@ -168,40 +188,64 @@ func _quad(st: SurfaceTool, faces: PackedVector3Array, a: Vector3, b: Vector3, c
 
 
 func _physics_process(delta: float) -> void:
-	if Engine.is_editor_hint():
+	if Engine.is_editor_hint() or _deck_body == null:
 		return
+	var gravity := Vector3.DOWN * float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 	for bike in _bikes:
-		if not is_instance_valid(bike) or bike.is_crashed:
+		if not is_instance_valid(bike) or bike.is_crashed or not _on_deck(bike):
 			continue
-		var local := to_local(bike.global_position)
-		# Ângulo na volta e distância até o eixo do looping.
-		var radial := Vector2(-local.z, radius - local.y)  # (seno, cosseno) * distância
-		var dist := radial.length()
-		if dist < radius * 0.45 or dist > radius + 1.5:
-			continue
-		var a := fposmod(atan2(radial.x, radial.y), TAU)
-		if a < 0.25 or a > TAU - 0.25:
-			continue  # trechos quase no chão: a física normal dá conta
-		var expected_x := offset * a / TAU
-		if absf(local.x - expected_x) > width:
-			continue
-		var outward := global_basis * Vector3(0.0, -cos(a), -sin(a))
-		var tangent := (global_basis * Vector3(offset / TAU, radius * sin(a), -radius * cos(a))).normalized()
 		var body := bike as RigidBody3D
+		var local := to_local(body.global_position)
+		var radial := Vector2(-local.z, radius - local.y)
+		var a := fposmod(atan2(radial.x, radial.y), TAU)
+		if a < 0.3 or a > TAU - 0.3:
+			# Quase no chão (entrada e saída): só alinha a moto com a reta do looping, para ela
+			# sair reta (sem isso sai um pouco torta e desvia do que vem depois).
+			_align_straight(body, local, delta)
+			continue
+		var inward := global_basis * Vector3(0.0, cos(a), sin(a))  # normal do piso
+		var tangent := (global_basis * _tangent_at(a)).normalized()
 		var along := body.linear_velocity.dot(tangent)
 		if along < min_speed:
-			continue  # devagar demais: o looping solta e a moto cai
-		body.linear_velocity += outward * stick * delta
-		if along < carry_speed:
-			body.linear_velocity += tangent * (carry_speed - along) * clampf(3.0 * delta, 0.0, 1.0)
-		# Guia de lado: a espiral anda `offset` metros para o lado ao longo da volta; a moto
-		# segue a pista (posição e direção) em vez de ir reto até a grade.
+			continue  # devagar demais: solta, a moto cai
+		var g := gravity * body.gravity_scale
+		# Gravidade puxando para fora do piso (para o centro do looping). A curva segura com
+		# v²/R; o looping só cobre uma falta pequena, senão a moto cai.
+		var deficit := g.dot(inward) - along * along / radius
+		if deficit > 0.0 and deficit <= g.length() * hold_assist:
+			body.linear_velocity -= inward * deficit * delta
+		# Na subida, alivia parte da gravidade que freia.
+		var brake := g.dot(tangent)
+		if brake < 0.0:
+			body.linear_velocity -= tangent * brake * climb_assist * delta
+		# A espiral anda `offset` metros para o lado ao longo da volta: a moto acompanha esse
+		# deslocamento (velocidade lateral da espiral + correção do quanto ficou para trás) e vira
+		# junto com a curva, como o piloto faria. Sem isso ela atrasa e bate na grade.
 		var side := global_basis.x
-		var lateral_error := expected_x - local.x
-		var lateral_speed := body.linear_velocity.dot(side)
-		var wanted := along * (offset / TAU) / radius + lateral_error * 3.0
-		body.linear_velocity += side * (wanted - lateral_speed) * clampf(6.0 * delta, 0.0, 1.0)
-		var inward := -outward
+		var lateral_error := _side(a) - local.x
+		var wanted := along * (offset * (1.0 - cos(a)) / TAU) / radius + lateral_error * 2.5
+		var lateral := body.linear_velocity.dot(side)
+		body.linear_velocity += side * (wanted - lateral) * clampf(8.0 * delta, 0.0, 1.0)
 		var heading_error := (-body.global_basis.z).signed_angle_to(tangent, inward)
 		var spin := body.angular_velocity.dot(inward)
-		body.angular_velocity += inward * (heading_error * 8.0 - spin) * clampf(10.0 * delta, 0.0, 1.0)
+		body.angular_velocity += inward * (heading_error * 6.0 - spin) * clampf(8.0 * delta, 0.0, 1.0)
+
+
+func _align_straight(body: RigidBody3D, local: Vector3, delta: float) -> void:
+	var forward := -global_basis.z
+	var target_x := offset if local.z < 0.0 and local.x > offset * 0.5 else 0.0
+	var side := global_basis.x
+	var lateral := body.linear_velocity.dot(side)
+	body.linear_velocity += side * ((target_x - local.x) * 1.5 - lateral) * clampf(6.0 * delta, 0.0, 1.0)
+	var heading_error := (-body.global_basis.z).signed_angle_to(forward, Vector3.UP)
+	var spin := body.angular_velocity.dot(Vector3.UP)
+	body.angular_velocity += Vector3.UP * (heading_error * 6.0 - spin) * clampf(8.0 * delta, 0.0, 1.0)
+
+
+## Alguma roda da moto está apoiada no piso deste looping?
+func _on_deck(bike: Node) -> bool:
+	for ray_name in ["_front_ray", "_rear_ray"]:
+		var ray: RayCast3D = bike.get(ray_name)
+		if ray and ray.is_colliding() and ray.get_collider() == _deck_body:
+			return true
+	return false

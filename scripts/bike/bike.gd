@@ -106,6 +106,12 @@ var _last_forward: Vector3 = Vector3.FORWARD
 
 var _crash_timer: float = 0.0
 var _clock: float = 0.0
+## Velocidade no começo do passo e se algum batente de suspensão agiu nele.
+var _speed_before_bump: float = 0.0
+## Último chão muito inclinado (looping, paredes) e quando foi.
+var _steep_normal: Vector3 = Vector3.UP
+var _steep_clock: float = -10.0
+var _bump_stopped := false
 var _next_safe_point_time: float = 0.0
 ## Cada item: {"time": float, "position": Vector3, "heading": Vector3}
 var _safe_points: Array[Dictionary] = []
@@ -271,8 +277,15 @@ func respawn(min_age: float = 0.0) -> void:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
+	_speed_before_bump = linear_velocity.length()
+	_bump_stopped = false
 	front_grounded = _apply_suspension(_front_ray, true)
 	rear_grounded = _apply_suspension(_rear_ray, false)
+	if _bump_stopped:
+		# O batente só muda a direção: a moto segue a rampa com (quase) a mesma velocidade.
+		var keep := _speed_before_bump * stats.bump_stop_keep_speed
+		if linear_velocity.length() < keep and linear_velocity.length() > 0.1:
+			linear_velocity = linear_velocity.normalized() * keep
 	_ground_normal = _average_ground_normal()
 	_rear_air_time = 0.0 if rear_grounded else _rear_air_time + delta
 	if is_grounded():
@@ -416,7 +429,13 @@ func _alignment_angle() -> float:
 ## e com as rodas nele, o próprio chão (senão ela tentaria se desvirar no meio do looping).
 func _upright_reference() -> Vector3:
 	if is_grounded() and _ground_normal.y < steep_ground:
+		_steep_normal = _ground_normal
+		_steep_clock = _clock
 		return _ground_normal
+	# Rodas descolaram por um instante no looping (no topo, por exemplo): continua usando o
+	# chão de antes por meio segundo, senão a moto seria dada como "de cabeça para baixo".
+	if _clock - _steep_clock < 0.5:
+		return _steep_normal
 	return Vector3.UP
 
 
@@ -556,8 +575,47 @@ func _apply_suspension(ray: RayCast3D, is_front: bool) -> bool:
 					0.0, stats.max_suspension_force)
 	apply_force(up * force, origin - global_position)
 
+	# Batente com antecipação: olha o chão onde esta roda vai estar no próximo passo. Se lá a
+	# mola passaria do fim do curso (base de rampa em alta velocidade), a roda sobe já agora o
+	# que falta, como um pneu de verdade que toca a rampa antes do eixo. Assim o corpo não bate
+	# na rampa e a moto empina junto com ela.
+	if not is_crashed:
+		_bump_stop(ray, origin, up, ray_length, compression, point_velocity)
+
 	_set_wheel_height(is_front, ray.position.y - (distance - stats.wheel_radius))
 	return true
+
+
+func _bump_stop(ray: RayCast3D, origin: Vector3, up: Vector3, ray_length: float, compression: float,
+		point_velocity: Vector3) -> void:
+	var limit := stats.suspension_rest_length * stats.bump_stop_ratio
+	var dt := get_physics_process_delta_time()
+	# Onde a roda vai estar daqui a 2 passos (só o movimento ao longo do chão).
+	var travel := point_velocity - up * point_velocity.dot(up)
+	var ahead := origin + travel * dt * 2.0
+	var query := PhysicsRayQueryParameters3D.create(ahead + up * 0.6, ahead - up * (ray_length + 0.2), ray.collision_mask, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var predicted := compression
+	if hit:
+		predicted = maxf(predicted, ray_length - (ahead.distance_to(hit["position"]) if (hit["position"] - ahead).dot(up) < 0.0 else -ahead.distance_to(hit["position"])))
+	if predicted <= limit:
+		return
+	# Velocidade para cima (no ponto da roda) que chega ao limite a tempo, sem passar dele.
+	var needed := (predicted - limit) / (dt * 2.0)
+	var current := point_velocity.dot(up)
+	if current >= needed:
+		return
+	# Impulso no ponto da roda que dá essa velocidade a ele: parte levanta a moto, parte vira
+	# giro (a frente empina). Aplicado direto nas velocidades: o resto do passo as reescreve a
+	# partir do valor lido, e um apply_impulse se perderia.
+	var com := global_transform * center_of_mass
+	var arm := origin - com
+	var inv_inertia := get_inverse_inertia_tensor()
+	var per_unit := 1.0 / mass + up.dot((inv_inertia * arm.cross(up)).cross(arm))
+	var impulse := up * (needed - current) / per_unit
+	linear_velocity += impulse / mass
+	angular_velocity += inv_inertia * arm.cross(impulse)
+	_bump_stopped = true
 
 
 func _set_wheel_height(is_front: bool, height: float) -> void:

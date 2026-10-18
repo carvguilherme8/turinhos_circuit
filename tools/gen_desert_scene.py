@@ -77,9 +77,9 @@ altitude = 95.0''' + s[clouds_end:]
 
 # ---- moto do jogador no ponto de partida (olhando para -Z)
 s = re.sub(r'(\[node name="Bike" parent="\." instance=ExtResource\("bike"\)\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 92)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 62)\n', s)
 s = re.sub(r'(\[node name="ChaseCamera"[^\]]*\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 98)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 68)\n', s)
 
 
 # ---- atrações
@@ -100,9 +100,9 @@ keep = []
 rings = []
 
 
-def ramp(name, x, z, yaw, up=0.0, top=0.0, down=0.0, height=1.0, width=9.0, base=1.2, crest=0.7, bump=False):
+def ramp(name, x, z, yaw, up=0.0, top=0.0, down=0.0, height=1.0, width=9.0, base=1.2, crest=0.7, bump=False, y=0.0):
     nodes.append(f'''[node name="{name}" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D({basis(yaw)}, {x:.2f}, 0, {z:.2f})
+transform = Transform3D({basis(yaw)}, {x:.2f}, {y:.2f}, {z:.2f})
 script = ExtResource("ramp")
 up_length = {up}
 top_length = {top}
@@ -150,43 +150,50 @@ def jump_line(prefix, x, z, yaw, up, height, base, gap, land_height, land_top, l
     keep.append((cx, cz, total * 0.5 + 6))
 
 
-# argolas no chão, para aquecer
-# (o arco de baixo fica enterrado: a moto passa por cima do chão)
-ring("Argola_Largada", 0, 2.75, 66, 0, 3.3)
-ring("Argola_Leste", 34, 2.75, 58, 20, 3.3)
-ring("Argola_Oeste", -34, 2.75, 58, -20, 3.3)
-keep += [(0, 80, 18), (34, 58, 8), (-34, 58, 8)]
+# Mapa condensado: vale de ~80 m de raio, atrações perto umas das outras e encadeadas
+# (a saída de cada looping já mira um salto). A moto larga em (0, 62) olhando para -Z.
+FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 80.0, 100.0, 130.0
 
-# mega rampa no meio, com argola no alto do voo e pouso comprido
-jump_line("Mega", 0, 40, 0, 22, 9, 8, 13.1, 7.0, 4.0, 26.0, 8.0, 11.5, 4.2)
-# lombadas em sequência depois do pouso da mega
-for k in range(6):
-    ramp(f"Lombada{k + 1}", 0, -38 - k * 7, 0, up=2.6, down=2.6, height=1.1, width=9, base=1.0, crest=0.8)
-keep.append((0, -56, 22))
-ring("Argola_Ritmo", 0, 2.75, -88, 0, 3.3)
+# argolas no chão, logo depois da largada (o arco de baixo fica enterrado)
+ring("Argola_Largada", 0, 2.75, 48, 0, 3.3)
+ring("Argola_Leste", 15, 2.75, 50, 0, 3.3)
+ring("Argola_Oeste", -15, 2.75, 50, 0, 3.3)
+keep += [(0, 56, 12), (15, 50, 6), (-15, 50, 6)]
 
-# dois loopings
-loop("Looping", -60, 32, 0, 7.5, 8.5)
-keep.append((-56, 28, 20))
-loop("LoopingGrande", 62, 44, 0, 9.0, 10.0)
-keep.append((67, 40, 22))
+# mega rampa no meio, com argola no alto do voo; depois do pouso, costelas iguais às do
+# estádio (rampas de ondulação: dá para passar empinado deslizando por cima)
+jump_line("Mega", 0, 36, 0, 22, 9, 8, 13.1, 7.0, 4.0, 26.0, 8.0, 11.5, 4.2)
+for k in range(8):
+    ramp(f"Costela{k + 1}", 0, -38 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
+         crest=0.7, bump=True)
+keep.append((0, -50, 16))
+ring("Argola_Ritmo", 0, 2.75, -70, 0, 3.3)
 
-# saltos médios com argola
-jump_line("SaltoA", -66, -8, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
-jump_line("SaltoB", 30, -2, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
+# loopings dos dois lados da mega; cada saída mira um salto
+loop("Looping", -30, 36, 0, 7.5, 8.5)          # sai em x = -21,5 -> salto dos contêineres
+keep.append((-26, 36, 14))
+loop("LoopingGrande", 32, 38, 0, 9.0, 10.0)    # sai em x = 42 -> rampa da mesa
+keep.append((37, 38, 16))
 
-# salto sobre contêineres
-jump_line("Conteiner", -26, -52, 0, 8, 3.2, 3, 12.0, 3.0, 2.0, 14.0, 0, 0, 0)
+# salto sobre contêineres, na linha de saída do looping pequeno
+jump_line("Conteiner", -21.5, 4, 0, 8, 3.2, 3, 12.0, 3.0, 2.0, 14.0, 0, 0, 0)
 
-# mesa de pedra com rampa de acesso e salto do penhasco (com argola) para um pouso
-mesa = (58, -88, 22.0, 9.0)
-ramp("Mesa_Acesso", 58, -24, 0, up=40, top=4, height=9, width=9, base=6)
-ring("Argola_Penhasco", 58, 9.6, -116, 0, 3.8, 0.0)
-ramp("Mesa_Pouso", 58, -114, 0, top=0.0, down=24, height=6, base=2.0)
-keep += [(58, -45, 14), (58, -125, 22)]
+# saltos médios com argola, nas laterais
+jump_line("SaltoA", -50, 24, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
+jump_line("SaltoB", 62, 22, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
+
+# mesa de pedra: rampa de acesso na linha de saída do looping grande; lá em cima, vira para
+# oeste num kicker na beira (decola por cima dos degraus do paredão) e salta pela argola para
+# um pouso que desce até o vale
+mesa = (40, -58, 12.0, 8.0)
+ramp("Mesa_Acesso", 42, -4, 0, up=34, top=4, height=8, width=9, base=6)
+ramp("Mesa_Kicker", 33, -58, 90, up=4, height=1.2, width=8, base=1.5, y=8.0)
+ring("Argola_Penhasco", 22, 11.0, -58, 90, 3.6, 0.0)
+ramp("Mesa_Pouso", 21, -58, 90, top=0.0, down=14, height=7, base=2.0)
+keep += [(42, -24, 10), (14, -58, 10), (40, -58, 14)]  # acesso, pouso e o topo da mesa
 
 # contêineres atravessados no caminho do salto "Conteiner": (x, z, giro em graus)
-containers = [(-29, -68, 90), (-23, -68, 90), (-40, -66, 15), (-12, -72, -20)]
+containers = [(-24.5, -15.5, 90), (-18.5, -15.5, 90)]
 
 nodes_text = "\n".join(nodes)
 # ---- ext resources novos
@@ -206,7 +213,11 @@ s = s[:last.end()] + "\n".join([
 keep_text = ", ".join(f"{x:.1f}, {z:.1f}, {r:.1f}" for x, z, r in keep)
 park = f'''[node name="Park" type="Node3D" parent="."]
 script = ExtResource("desert_park")
-mesas = Array[Vector4]([Vector4({mesa[0]}, {mesa[1]}, {mesa[2]}, {mesa[3]}), Vector4(-95, -70, 16.0, 14.0), Vector4(-100, 75, 12.0, 11.0), Vector4(100, 95, 14.0, 12.0)])
+floor_radius = {FLOOR_RADIUS}
+cliff_radius = {CLIFF_RADIUS}
+map_half_size = {MAP_HALF}
+prop_count = 110
+mesas = Array[Vector4]([Vector4({mesa[0]}, {mesa[1]}, {mesa[2]}, {mesa[3]}), Vector4(-66, -48, 10.0, 10.0), Vector4(-64, 52, 9.0, 8.0), Vector4(80, 60, 8.0, 9.0)])
 keep_out = PackedVector3Array({keep_text})
 container_spots = PackedVector3Array({", ".join(f"{x}, {z}, {r}" for x, z, r in containers)})
 terrain_material = ExtResource("desert_terrain")

@@ -145,3 +145,9 @@ extends Resource
 @export_range(0.0, 5000.0, 10.0, "suffix:N·s/m") var spring_damping: float = 1100.0
 ## Teto de força por roda, evita "estilingue" em pousos muito fortes.
 @export_range(1000.0, 50000.0, 100.0, "suffix:N") var max_suspension_force: float = 12000.0
+## Batente: a partir desta fração do curso comprimida, a roda age como rígida (não deixa o
+## corpo bater na base das rampas). A velocidade que iria contra o chão vira velocidade ao
+## longo dele (a moto sobe a rampa sem perder embalo).
+@export_range(0.3, 1.0, 0.01) var bump_stop_ratio: float = 0.7
+## Quanto da velocidade é mantida ao ser desviada pelo batente (1 = toda).
+@export_range(0.5, 1.0, 0.01) var bump_stop_keep_speed: float = 0.97

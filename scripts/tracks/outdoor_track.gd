@@ -40,12 +40,12 @@ extends StadiumTrack
 	Vector4(62.6, 22, 2, 1),
 	Vector4(145, 8, 1, 0),
 	Vector4(158.4, 22, 1.7, 1),
-	Vector4(248.8, 24, 2.8, 1),
+	Vector4(238.3, 24, 2.5, 1),
 	Vector4(330.3, 30, 2.4, 2),
 	Vector4(546.6, 26, 2, 2),
 	Vector4(575.4, 26, 2, 2),
-	Vector4(662.6, 22, 2.2, 1),
-	Vector4(729.3, 18, 1.6, 1),
+	Vector4(656.6, 22, 1.9, 1),
+	Vector4(727.5, 18, 1.3, 1),
 ]:
 	set(value):
 		jumps = value
