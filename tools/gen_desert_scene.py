@@ -169,31 +169,34 @@ for k in range(8):
 keep.append((0, -50, 16))
 ring("Argola_Ritmo", 0, 2.75, -70, 0, 3.3)
 
-# loopings dos dois lados da mega; cada saída mira um salto
-loop("Looping", -30, 36, 0, 7.5, 8.5)          # sai em x = -21,5 -> salto dos contêineres
+# loopings dos dois lados da mega. Só física natural: a moto sai do looping seguindo reto a
+# ~11,5° para a direita (+x) da reta de entrada (medido nas simulações, a toda); o que vem
+# depois de cada um está alinhado com essa saída.
+EXIT_YAW = -11.5
+loop("Looping", -30, 36, 0, 7.5, 8.5)          # sai em x ~ -22 -> salto dos contêineres
 keep.append((-26, 36, 14))
-loop("LoopingGrande", 32, 38, 0, 9.0, 10.0)    # sai em x = 42 -> rampa da mesa
-keep.append((37, 38, 16))
+loop("LoopingGrande", 26, 38, 0, 9.0, 10.0)    # sai em x ~ 36 -> rampa da mesa
+keep.append((31, 38, 16))
 
 # salto sobre contêineres, na linha de saída do looping pequeno
-jump_line("Conteiner", -21.5, 4, 0, 8, 3.2, 3, 12.0, 3.0, 2.0, 14.0, 0, 0, 0)
+jump_line("Conteiner", -16.0, 4, EXIT_YAW, 8, 3.2, 3, 12.0, 3.0, 2.0, 14.0, 0, 0, 0)
 
 # saltos médios com argola, nas laterais
 jump_line("SaltoA", -50, 24, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
-jump_line("SaltoB", 62, 22, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
+jump_line("SaltoB", 14, 22, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)  # depois da argola leste
 
 # mesa de pedra: rampa de acesso na linha de saída do looping grande; lá em cima, vira para
 # oeste num kicker na beira (decola por cima dos degraus do paredão) e salta pela argola para
 # um pouso que desce até o vale
-mesa = (40, -58, 12.0, 8.0)
-ramp("Mesa_Acesso", 42, -4, 0, up=34, top=4, height=8, width=9, base=6)
-ramp("Mesa_Kicker", 33, -58, 90, up=4, height=1.2, width=8, base=1.5, y=8.0)
-ring("Argola_Penhasco", 22, 11.0, -58, 90, 3.6, 0.0)
-ramp("Mesa_Pouso", 21, -58, 90, top=0.0, down=14, height=7, base=2.0)
-keep += [(42, -24, 10), (14, -58, 10), (40, -58, 14)]  # acesso, pouso e o topo da mesa
+mesa = (54, -58, 12.0, 8.0)
+ramp("Mesa_Acesso", 44, -4, EXIT_YAW, up=34, top=4, height=8, width=9, base=6)
+ramp("Mesa_Kicker", 47, -58, 90, up=4, height=1.2, width=8, base=1.5, y=8.0)
+ring("Argola_Penhasco", 36, 11.0, -58, 90, 3.6, 0.0)
+ramp("Mesa_Pouso", 35, -58, 90, top=0.0, down=14, height=7, base=2.0)
+keep += [(48, -24, 10), (28, -58, 10), (54, -58, 14)]  # acesso, pouso e o topo da mesa
 
 # contêineres atravessados no caminho do salto "Conteiner": (x, z, giro em graus)
-containers = [(-24.5, -15.5, 90), (-18.5, -15.5, 90)]
+containers = [(-15.1, -15.5, 79), (-9.1, -15.5, 79)]
 
 nodes_text = "\n".join(nodes)
 # ---- ext resources novos
