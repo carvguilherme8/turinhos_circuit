@@ -135,68 +135,73 @@ offset = {offset}
 ''')
 
 
-def jump_line(prefix, x, z, yaw, up, height, base, gap, land_height, land_top, land_down, ring_at, ring_y, ring_radius):
-    """Kicker com origem em (x, z) andando para `yaw`; pouso a `gap` m do lábio; argola opcional."""
+def double(prefix, x, z, yaw, length, height, base, gap, ring_y=0.0, ring_radius=3.6):
+    """Salto de mão dupla: duas rampas iguais, uma de frente para a outra, com `gap` m entre os
+    lábios. Num sentido a 1ª decola e a descida da 2ª é o pouso; no outro, o contrário.
+    A rampa A começa em (x, z) e o salto anda para `yaw`; argola (opcional) no meio do vão."""
     fx, fz = forward(yaw)
-    lip = up + 0.9  # o arredondamento da crista alonga um pouco
-    ramp(prefix + "_Kicker", x, z, yaw, up=up, height=height, base=base)
-    lx, lz = x + fx * (lip + gap), z + fz * (lip + gap)
-    ramp(prefix + "_Pouso", lx, lz, yaw, top=land_top, down=land_down, height=land_height, base=2.0)
-    if ring_at > 0:
-        ring(prefix + "_Argola", x + fx * (lip + ring_at), ring_y, z + fz * (lip + ring_at), yaw, ring_radius)
-    # área livre do kicker até 20 m depois do pouso (para frear ou seguir sem bater em nada)
-    total = lip + gap + land_top + land_down + 20.0
-    cx, cz = x + fx * total * 0.5, z + fz * total * 0.5
-    keep.append((cx, cz, total * 0.5 + 6))
+    lip = length + 0.9  # o arredondamento da crista alonga um pouco
+    total = 2 * lip + gap
+    ramp(prefix + "_A", x, z, yaw, up=length, height=height, base=base)
+    ramp(prefix + "_B", x + fx * total, z + fz * total, yaw + 180.0, up=length, height=height, base=base)
+    if ring_y > 0.0:
+        mid = lip + gap * 0.5
+        ring(prefix + "_Argola", x + fx * mid, ring_y, z + fz * mid, yaw, ring_radius)
+    keep.append((x + fx * total * 0.5, z + fz * total * 0.5, total * 0.5 + 8))
+    return (x + fx * (lip + gap * 0.5), z + fz * (lip + gap * 0.5))
 
 
-# Mapa condensado: vale de ~80 m de raio, atrações perto umas das outras e encadeadas
-# (a saída de cada looping já mira um salto). A moto larga em (0, 62) olhando para -Z.
+def tabletop(prefix, x, z, yaw, length, top, height, base, ring_y=0.0, ring_radius=3.6, ring_at=5.0):
+    """Mesa simétrica (sobe, topo plano, desce igual): funciona nos dois sentidos.
+    Argola (opcional) sobre o topo, `ring_at` m depois da beirada de cada lado."""
+    fx, fz = forward(yaw)
+    total = 2 * length + top
+    ramp(prefix, x, z, yaw, up=length, top=top, down=length, height=height, base=base)
+    if ring_y > 0.0:
+        at = length + top * 0.5
+        ring(prefix + "_Argola", x + fx * at, ring_y, z + fz * at, yaw, ring_radius)
+    keep.append((x + fx * total * 0.5, z + fz * total * 0.5, total * 0.5 + 8))
+
+
+# Mapa condensado: vale de ~80 m de raio, atrações perto umas das outras. Todos os saltos
+# são de mão dupla (pares espelhados ou mesas simétricas) e as argolas ficam no alto do voo.
+# A moto larga em (0, 62) olhando para -Z.
 FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 80.0, 100.0, 130.0
 
-# argolas no chão, logo depois da largada (o arco de baixo fica enterrado)
-ring("Argola_Largada", 0, 2.75, 48, 0, 3.3)
-ring("Argola_Leste", 15, 2.75, 50, 0, 3.3)
-ring("Argola_Oeste", -15, 2.75, 50, 0, 3.3)
-keep += [(0, 56, 12), (15, 50, 6), (-15, 50, 6)]
-
-# mega rampa no meio, com argola no alto do voo; depois do pouso, costelas iguais às do
-# estádio (rampas de ondulação: dá para passar empinado deslizando por cima)
-jump_line("Mega", 0, 36, 0, 22, 9, 8, 13.1, 7.0, 4.0, 26.0, 8.0, 11.5, 4.2)
+# mega salto no meio (argola no alto do voo) e, depois, costelas iguais às do estádio
+double("Mega", 0, 40, 0, 22, 9, 8, 12, 11.2, 4.2)
 for k in range(8):
-    ramp(f"Costela{k + 1}", 0, -38 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
+    ramp(f"Costela{k + 1}", 0, -24 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
          crest=0.7, bump=True)
-keep.append((0, -50, 16))
-ring("Argola_Ritmo", 0, 2.75, -70, 0, 3.3)
+keep.append((0, -36, 14))
 
 # loopings dos dois lados da mega. Só física natural: a moto sai do looping seguindo reto a
-# ~11,5° para a direita (+x) da reta de entrada (medido nas simulações, a toda); o que vem
-# depois de cada um está alinhado com essa saída.
+# ~11,5° para a direita (+x) da reta de entrada (medido nas simulações, a toda); o salto que
+# vem depois de cada um está alinhado com essa saída.
 EXIT_YAW = -11.5
 loop("Looping", -30, 36, 0, 7.5, 8.5)          # sai em x ~ -22 -> salto dos contêineres
 keep.append((-26, 36, 14))
-loop("LoopingGrande", 26, 38, 0, 9.0, 10.0)    # sai em x ~ 36 -> rampa da mesa
+loop("LoopingGrande", 26, 38, 0, 9.0, 10.0)    # sai em x ~ 36 -> salto com argola
 keep.append((31, 38, 16))
 
-# salto sobre contêineres, na linha de saída do looping pequeno
-jump_line("Conteiner", -16.0, 4, EXIT_YAW, 8, 3.2, 3, 12.0, 3.0, 2.0, 14.0, 0, 0, 0)
+# salto sobre contêineres, na linha de saída do looping pequeno (contêineres no vão)
+container_mid = double("Conteiner", -16.0, 4, EXIT_YAW, 8, 3.2, 3, 12)
+# salto com argola na linha de saída do looping grande
+double("Saida", 44, -4, EXIT_YAW, 9, 4.5, 2, 14, 7.4, 3.6)
 
 # saltos médios com argola, nas laterais
-jump_line("SaltoA", -50, 24, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)
-jump_line("SaltoB", 14, 22, 0, 9, 4.5, 2, 11.1, 4.0, 3.0, 18.0, 7.8, 7.6, 3.6)  # depois da argola leste
+double("SaltoA", -50, 24, 0, 9, 4.5, 2, 14, 7.4, 3.6)
+double("SaltoB", 14, 22, 0, 9, 4.5, 2, 14, 7.4, 3.6)
 
-# mesa de pedra: rampa de acesso na linha de saída do looping grande; lá em cima, vira para
-# oeste num kicker na beira (decola por cima dos degraus do paredão) e salta pela argola para
-# um pouso que desce até o vale
-mesa = (54, -58, 12.0, 8.0)
-ramp("Mesa_Acesso", 44, -4, EXIT_YAW, up=34, top=4, height=8, width=9, base=6)
-ramp("Mesa_Kicker", 47, -58, 90, up=4, height=1.2, width=8, base=1.5, y=8.0)
-ring("Argola_Penhasco", 36, 11.0, -58, 90, 3.6, 0.0)
-ramp("Mesa_Pouso", 35, -58, 90, top=0.0, down=14, height=7, base=2.0)
-keep += [(48, -24, 10), (28, -58, 10), (54, -58, 14)]  # acesso, pouso e o topo da mesa
+# mesas grandes simétricas no sul, com argola sobre o topo
+tabletop("MesaOeste", -40, -22, 0, 16, 10, 6, 5, 9.9, 3.6)
+double("SaltoSul", 26, -30, 0, 16, 6, 5, 10, 8.0, 3.8)
 
-# contêineres atravessados no caminho do salto "Conteiner": (x, z, giro em graus)
-containers = [(-15.1, -15.5, 79), (-9.1, -15.5, 79)]
+# contêineres atravessados no vão do salto "Conteiner": (x, z, giro em graus)
+import math as _m
+_r = (_m.cos(_m.radians(EXIT_YAW)), -_m.sin(_m.radians(EXIT_YAW)))  # direita do caminho
+containers = [(round(container_mid[0] + _r[0] * k, 2), round(container_mid[1] + _r[1] * k, 2), EXIT_YAW + 90.0)
+              for k in (-3.0, 3.0)]
 
 nodes_text = "\n".join(nodes)
 # ---- ext resources novos
@@ -220,7 +225,7 @@ floor_radius = {FLOOR_RADIUS}
 cliff_radius = {CLIFF_RADIUS}
 map_half_size = {MAP_HALF}
 prop_count = 110
-mesas = Array[Vector4]([Vector4({mesa[0]}, {mesa[1]}, {mesa[2]}, {mesa[3]}), Vector4(-66, -48, 10.0, 10.0), Vector4(-64, 52, 9.0, 8.0), Vector4(80, 60, 8.0, 9.0)])
+mesas = Array[Vector4]([Vector4(-66, -54, 10.0, 10.0), Vector4(-64, 52, 9.0, 8.0), Vector4(66, 58, 9.0, 9.0), Vector4(62, -54, 10.0, 9.0)])
 keep_out = PackedVector3Array({keep_text})
 container_spots = PackedVector3Array({", ".join(f"{x}, {z}, {r}" for x, z, r in containers)})
 terrain_material = ExtResource("desert_terrain")
