@@ -46,11 +46,14 @@ func _desired_position() -> Vector3:
 	return target.global_position - _heading * distance + _up * height
 
 
-## A moto está numa parede ou no looping (chão bem inclinado, rodas nele)?
+## "Para cima" da câmera: o da moto no looping; a vertical no resto (inclusive no wallride).
 func _target_up() -> Vector3:
 	if target.has_method("is_grounded") and target.is_grounded():
 		var normal: Vector3 = target.get("_ground_normal")
-		if normal and normal.y < 0.6:
+		# Só no looping (moto apontando muito para cima/baixo ou de ponta-cabeça) a câmera gira
+		# junto; no wallride a moto anda na horizontal e a câmera fica nivelada.
+		var forward_y := absf(target.global_basis.z.y)
+		if normal and normal.y < 0.6 and (forward_y > 0.5 or target.global_basis.y.y < 0.0):
 			return target.global_basis.y
 	elif _up.y < 0.6:
 		# No ar logo depois do looping: vai voltando para a vertical.

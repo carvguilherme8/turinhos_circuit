@@ -97,10 +97,13 @@ func _rebuild() -> void:
 		var phi := arc * float(i) / steps
 		var ends := minf(phi, arc - phi)
 		var taper := smoothstep(0.0, deg_to_rad(taper_degrees), ends)
-		var limit := maxf(0.05, minf(wall_height, top) * taper)
+		var limit := minf(wall_height, top) * taper
+		# Nas pontas a superfície chega a zero e afunda um pouco sob o chão: entrada sem degrau
+		# (e sem o piso e o chão "brigarem" na tela).
+		var sink := 0.03 * (1.0 - taper)
 		var row: Array[Vector3] = []
 		for s in s_samples:
-			row.append(_centerline(phi) + _outward(phi) * s + Vector3.UP * _profile(s, limit))
+			row.append(_centerline(phi) + _outward(phi) * s + Vector3.UP * (_profile(s, limit) - sink))
 		# borda de cima da parede e o lado de fora descendo até o chão (parede maciça)
 		var last: Vector3 = row[row.size() - 1]
 		row.append(last + _outward(phi) * 0.6)
