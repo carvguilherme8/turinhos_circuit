@@ -110,19 +110,24 @@ func _rebuild() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var faces := PackedVector3Array()
-	var turn := _side()
+	var c := center()
 	for i in rows.size() - 1:
 		var a: Array = rows[i]
 		var b: Array = rows[i + 1]
 		for k in a.size() - 1:
 			var quad: Array[Vector3] = [a[k], a[k + 1], b[k + 1], b[k]]
 			var tris: Array = [[quad[0], quad[1], quad[2]], [quad[0], quad[2], quad[3]]]
+			# Piso e parede: frente para dentro da curva e para cima; lado de fora da parede
+			# (as duas últimas faixas): frente para fora.
+			var mid: Vector3 = (quad[0] + quad[2]) * 0.5
+			var inward := Vector3(c.x - mid.x, 0.0, c.z - mid.z).normalized()
+			var facing := inward + Vector3.UP * 0.5 if k < a.size() - 2 else -inward
 			for tri in tris:
 				var p0: Vector3 = tri[0]
 				var p1: Vector3 = tri[1]
 				var p2: Vector3 = tri[2]
-				# Frente dos triângulos para cima/para dentro da curva.
-				if (p1 - p0).cross(p2 - p0).y * turn < 0.0:
+				# Mesma regra do looping: troca a ordem se a frente estiver virada para o outro lado.
+				if (p1 - p0).cross(p2 - p0).dot(facing) > 0.0:
 					var tmp := p1
 					p1 = p2
 					p2 = tmp
