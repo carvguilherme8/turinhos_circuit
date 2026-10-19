@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3]
+[gd_scene load_steps=47 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="camera"]
@@ -39,6 +39,7 @@
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="Script" path="res://scripts/tracks/fire_ring.gd" id="fire_ring"]
 [ext_resource type="Script" path="res://scripts/tracks/loop.gd" id="loop"]
+[ext_resource type="Script" path="res://scripts/tracks/wallride.gd" id="wallride"]
 [ext_resource type="Script" path="res://scripts/ui/free_roam_hud.gd" id="free_roam_hud"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_whoosh.wav" id="sfx_whoosh"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/wind_loop.wav" id="sfx_wind"]
@@ -94,13 +95,13 @@ altitude = 95.0
 
 [node name="Park" type="Node3D" parent="."]
 script = ExtResource("desert_park")
-floor_radius = 80.0
-cliff_radius = 100.0
-map_half_size = 130.0
+floor_radius = 84.0
+cliff_radius = 104.0
+map_half_size = 134.0
 prop_count = 110
-mesas = Array[Vector4]([Vector4(-66, -54, 10.0, 10.0), Vector4(-64, 52, 9.0, 8.0), Vector4(66, 58, 9.0, 9.0), Vector4(62, -54, 10.0, 9.0)])
-keep_out = PackedVector3Array(0.0, 11.1, 36.9, 0.0, -36.0, 14.0, -26.0, 36.0, 14.0, 31.0, 38.0, 16.0, -13.0, -10.6, 22.9, 47.4, -20.6, 24.9, -50.0, 7.1, 24.9, 14.0, 5.1, 24.9, -40.0, -43.0, 29.0, 26.0, -51.9, 29.9)
-container_spots = PackedVector3Array(-15.97, -11.2, 78.5, -10.09, -10.0, 78.5)
+mesas = Array[Vector4]([Vector4(-78, -50, 9.0, 10.0), Vector4(-76, 56, 8.0, 8.0), Vector4(74, 52, 9.0, 9.0), Vector4(70, -56, 9.0, 9.0)])
+keep_out = PackedVector3Array(4.0, -4.9, 36.9, 19.0, -44.0, 28.0, 34.0, -15.1, 29.9, 34.0, 24.9, 20.9, 19.0, 44.0, 28.0, -43.9, 34.0, 26.0, -28.0, 27.5, 14.0, -24.0, 1.7, 22.9, -24.0, -24.0, 10.0, -40.5, -34.0, 29.5, -56.9, -12.1, 24.9, -56.9, 19.9, 19.9)
+container_spots = PackedVector3Array(-27.0, 1.74, 90.0, -21.0, 1.74, 90.0)
 terrain_material = ExtResource("desert_terrain")
 
 [node name="Features" type="Node3D" parent="."]
@@ -109,10 +110,12 @@ terrain_material = ExtResource("desert_terrain")
 
 [node name="Loops" type="Node3D" parent="Features"]
 
+[node name="Walls" type="Node3D" parent="Features"]
+
 [node name="Rings" type="Node3D" parent="Features"]
 
 [node name="Mega_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, 40.00)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.00, 0.00, 24.00)
 script = ExtResource("ramp")
 up_length = 22
 top_length = 0.0
@@ -125,7 +128,7 @@ is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="Mega_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.00, 0.00, -17.80)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.00, 0.00, -33.80)
 script = ExtResource("ramp")
 up_length = 22
 top_length = 0.0
@@ -138,129 +141,107 @@ is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="Mega_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 11.20, 11.10)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.00, 11.20, -4.90)
 script = ExtResource("fire_ring")
 radius = 4.2
 stand_height = 0.0
 
-[node name="Costela1" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -24.00)
-script = ExtResource("ramp")
-up_length = 1.5
-top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
-crest_radius = 0.7
-is_bump = true
+[node name="CurvaSul" type="Node3D" parent="Features/Walls"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.00, 0, -44.00)
+script = ExtResource("wallride")
+radius = 18.0
+arc_degrees = 180
+turn_right = true
 material = ExtResource("ramp_dirt")
 
-[node name="Costela2" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -27.40)
+[node name="SaltoGrande_A" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 34.00, 0.00, -37.00)
 script = ExtResource("ramp")
-up_length = 1.5
+up_length = 16
 top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
+down_length = 0.0
+height = 6
+width = 9.0
+base_radius = 5
 crest_radius = 0.7
-is_bump = true
+is_bump = false
 material = ExtResource("ramp_dirt")
 
-[node name="Costela3" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -30.80)
+[node name="SaltoGrande_B" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, -0.0000, 0, 1, 0, 0.0000, 0, 1.0000, 34.00, 0.00, 6.80)
 script = ExtResource("ramp")
-up_length = 1.5
+up_length = 16
 top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
+down_length = 0.0
+height = 6
+width = 9.0
+base_radius = 5
 crest_radius = 0.7
-is_bump = true
+is_bump = false
 material = ExtResource("ramp_dirt")
 
-[node name="Costela4" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -34.20)
+[node name="SaltoGrande_Argola" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 34.00, 8.00, -15.10)
+script = ExtResource("fire_ring")
+radius = 3.8
+stand_height = 0.0
+
+[node name="SaltoMedio_A" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 34.00, 0.00, 12.00)
 script = ExtResource("ramp")
-up_length = 1.5
+up_length = 8
 top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
+down_length = 0.0
+height = 3.2
+width = 9.0
+base_radius = 3
 crest_radius = 0.7
-is_bump = true
+is_bump = false
 material = ExtResource("ramp_dirt")
 
-[node name="Costela5" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -37.60)
+[node name="SaltoMedio_B" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, -0.0000, 0, 1, 0, 0.0000, 0, 1.0000, 34.00, 0.00, 37.80)
 script = ExtResource("ramp")
-up_length = 1.5
+up_length = 8
 top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
+down_length = 0.0
+height = 3.2
+width = 9.0
+base_radius = 3
 crest_radius = 0.7
-is_bump = true
+is_bump = false
 material = ExtResource("ramp_dirt")
 
-[node name="Costela6" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -41.00)
-script = ExtResource("ramp")
-up_length = 1.5
-top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
-crest_radius = 0.7
-is_bump = true
+[node name="SaltoMedio_Argola" type="Node3D" parent="Features/Rings"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 34.00, 5.40, 24.90)
+script = ExtResource("fire_ring")
+radius = 3.3
+stand_height = 0.0
+
+[node name="CurvaNorte" type="Node3D" parent="Features/Walls"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 37.00, 0, 44.00)
+script = ExtResource("wallride")
+radius = 18.0
+arc_degrees = 180
+turn_right = true
 material = ExtResource("ramp_dirt")
 
-[node name="Costela7" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -44.40)
-script = ExtResource("ramp")
-up_length = 1.5
-top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
-crest_radius = 0.7
-is_bump = true
-material = ExtResource("ramp_dirt")
-
-[node name="Costela8" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.00, 0.00, -47.80)
-script = ExtResource("ramp")
-up_length = 1.5
-top_length = 0.0
-down_length = 1.5
-height = 0.5
-width = 8
-base_radius = 1.2
-crest_radius = 0.7
-is_bump = true
+[node name="CurvaOesteNorte" type="Node3D" parent="Features/Walls"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -59.93, 0, 34.00)
+script = ExtResource("wallride")
+radius = 16.0
+arc_degrees = 191.5
+turn_right = false
 material = ExtResource("ramp_dirt")
 
 [node name="Looping" type="Node3D" parent="Features/Loops"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.00, 0, 36.00)
+transform = Transform3D(0.9799, 0, 0.1994, 0, 1, 0, -0.1994, 0, 0.9799, -31.99, 0, 27.49)
 script = ExtResource("loop")
 radius = 7.5
 offset = 8.5
 
-[node name="LoopingGrande" type="Node3D" parent="Features/Loops"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 26.00, 0, 38.00)
-script = ExtResource("loop")
-radius = 9.0
-offset = 10.0
-
 [node name="Conteiner_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(0.9799, 0, -0.1994, 0, 1, 0, 0.1994, 0, 0.9799, -16.00, 0.00, 4.00)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, 16.64)
 script = ExtResource("ramp")
 up_length = 8
 top_length = 0.0
@@ -273,7 +254,7 @@ is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="Conteiner_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-0.9799, 0, 0.1994, 0, 1, 0, -0.1994, 0, -0.9799, -10.06, 0.00, -25.20)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -24.00, 0.00, -13.16)
 script = ExtResource("ramp")
 up_length = 8
 top_length = 0.0
@@ -285,40 +266,81 @@ crest_radius = 0.7
 is_bump = false
 material = ExtResource("ramp_dirt")
 
-[node name="Saida_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(0.9799, 0, -0.1994, 0, 1, 0, 0.1994, 0, 0.9799, 44.00, 0.00, -4.00)
+[node name="Costela1" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, -17.00)
 script = ExtResource("ramp")
-up_length = 9
+up_length = 1.5
 top_length = 0.0
-down_length = 0.0
-height = 4.5
-width = 9.0
-base_radius = 2
+down_length = 1.5
+height = 0.5
+width = 8
+base_radius = 1.2
 crest_radius = 0.7
-is_bump = false
+is_bump = true
 material = ExtResource("ramp_dirt")
 
-[node name="Saida_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-0.9799, 0, 0.1994, 0, 1, 0, -0.1994, 0, -0.9799, 50.74, 0.00, -37.12)
+[node name="Costela2" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, -20.40)
 script = ExtResource("ramp")
-up_length = 9
+up_length = 1.5
 top_length = 0.0
-down_length = 0.0
-height = 4.5
-width = 9.0
-base_radius = 2
+down_length = 1.5
+height = 0.5
+width = 8
+base_radius = 1.2
 crest_radius = 0.7
-is_bump = false
+is_bump = true
 material = ExtResource("ramp_dirt")
 
-[node name="Saida_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(0.9799, 0, -0.1994, 0, 1, 0, 0.1994, 0, 0.9799, 47.37, 7.40, -20.56)
-script = ExtResource("fire_ring")
-radius = 3.6
-stand_height = 0.0
+[node name="Costela3" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, -23.80)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0.0
+down_length = 1.5
+height = 0.5
+width = 8
+base_radius = 1.2
+crest_radius = 0.7
+is_bump = true
+material = ExtResource("ramp_dirt")
+
+[node name="Costela4" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, -27.20)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0.0
+down_length = 1.5
+height = 0.5
+width = 8
+base_radius = 1.2
+crest_radius = 0.7
+is_bump = true
+material = ExtResource("ramp_dirt")
+
+[node name="Costela5" type="StaticBody3D" parent="Features/Ramps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.00, 0.00, -30.60)
+script = ExtResource("ramp")
+up_length = 1.5
+top_length = 0.0
+down_length = 1.5
+height = 0.5
+width = 8
+base_radius = 1.2
+crest_radius = 0.7
+is_bump = true
+material = ExtResource("ramp_dirt")
+
+[node name="CurvaOesteSul" type="Node3D" parent="Features/Walls"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.00, 0, -34.00)
+script = ExtResource("wallride")
+radius = 19.465774711201
+arc_degrees = 180
+turn_right = false
+material = ExtResource("ramp_dirt")
 
 [node name="SaltoA_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.00, 0.00, 24.00)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -56.93, 0.00, -29.00)
 script = ExtResource("ramp")
 up_length = 9
 top_length = 0.0
@@ -331,7 +353,7 @@ is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="SaltoA_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -50.00, 0.00, -9.80)
+transform = Transform3D(1.0000, 0, -0.0000, 0, 1, 0, 0.0000, 0, 1.0000, -56.93, 0.00, 4.80)
 script = ExtResource("ramp")
 up_length = 9
 top_length = 0.0
@@ -344,99 +366,48 @@ is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="SaltoA_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.00, 7.40, 7.10)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -56.93, 7.40, -12.10)
 script = ExtResource("fire_ring")
 radius = 3.6
 stand_height = 0.0
 
 [node name="SaltoB_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.00, 0.00, 22.00)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -56.93, 0.00, 8.00)
 script = ExtResource("ramp")
-up_length = 9
+up_length = 8
 top_length = 0.0
 down_length = 0.0
-height = 4.5
+height = 3.2
 width = 9.0
-base_radius = 2
+base_radius = 3
 crest_radius = 0.7
 is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="SaltoB_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 14.00, 0.00, -11.80)
+transform = Transform3D(1.0000, 0, -0.0000, 0, 1, 0, 0.0000, 0, 1.0000, -56.93, 0.00, 31.80)
 script = ExtResource("ramp")
-up_length = 9
+up_length = 8
 top_length = 0.0
 down_length = 0.0
-height = 4.5
+height = 3.2
 width = 9.0
-base_radius = 2
+base_radius = 3
 crest_radius = 0.7
 is_bump = false
 material = ExtResource("ramp_dirt")
 
 [node name="SaltoB_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.00, 7.40, 5.10)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -56.93, 5.40, 19.90)
 script = ExtResource("fire_ring")
-radius = 3.6
-stand_height = 0.0
-
-[node name="MesaOeste" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.00, 0.00, -22.00)
-script = ExtResource("ramp")
-up_length = 16
-top_length = 10
-down_length = 16
-height = 6
-width = 9.0
-base_radius = 5
-crest_radius = 0.7
-is_bump = false
-material = ExtResource("ramp_dirt")
-
-[node name="MesaOeste_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.00, 9.90, -43.00)
-script = ExtResource("fire_ring")
-radius = 3.6
-stand_height = 0.0
-
-[node name="SaltoSul_A" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 26.00, 0.00, -30.00)
-script = ExtResource("ramp")
-up_length = 16
-top_length = 0.0
-down_length = 0.0
-height = 6
-width = 9.0
-base_radius = 5
-crest_radius = 0.7
-is_bump = false
-material = ExtResource("ramp_dirt")
-
-[node name="SaltoSul_B" type="StaticBody3D" parent="Features/Ramps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 26.00, 0.00, -73.80)
-script = ExtResource("ramp")
-up_length = 16
-top_length = 0.0
-down_length = 0.0
-height = 6
-width = 9.0
-base_radius = 5
-crest_radius = 0.7
-is_bump = false
-material = ExtResource("ramp_dirt")
-
-[node name="SaltoSul_Argola" type="Node3D" parent="Features/Rings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 26.00, 8.00, -51.90)
-script = ExtResource("fire_ring")
-radius = 3.8
+radius = 3.3
 stand_height = 0.0
 
 [node name="Bike" parent="." instance=ExtResource("bike")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 62)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.8, 42)
 
 [node name="ChaseCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 68)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.8, 48)
 current = true
 fov = 70.0
 far = 900.0

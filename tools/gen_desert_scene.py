@@ -77,9 +77,9 @@ altitude = 95.0''' + s[clouds_end:]
 
 # ---- moto do jogador no ponto de partida (olhando para -Z)
 s = re.sub(r'(\[node name="Bike" parent="\." instance=ExtResource\("bike"\)\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 62)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.8, 42)\n', s)
 s = re.sub(r'(\[node name="ChaseCamera"[^\]]*\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 68)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.8, 48)\n', s)
 
 
 # ---- atrações
@@ -135,6 +135,43 @@ offset = {offset}
 ''')
 
 
+def rotate_about(center, point, yaw_deg):
+    """Gira `point` em volta de `center` pelo mesmo giro que um rumo `yaw` aplica (em Y)."""
+    t = math.radians(yaw_deg)
+    dx, dz = point[0] - center[0], point[1] - center[1]
+    return (center[0] + dx * math.cos(t) + dz * math.sin(t), center[1] - dx * math.sin(t) + dz * math.cos(t))
+
+
+def wallride(name, start, heading_yaw, turn, radius, lane_inside=3.0):
+    """Curva de wallride começando em `start` (ponto da raia) andando para `heading_yaw`.
+    `turn` > 0 vira à direita, < 0 à esquerda (graus). A raia passa `lane_inside` m por dentro
+    da linha do meio (no fundo inclinado; quem vem rápido pelo meio sobe na parede).
+    Devolve o ponto e o rumo da raia no fim da curva e a lista de pontos da raia."""
+    right = turn > 0
+    fx, fz = forward(heading_yaw)
+    rx, rz = -fz, fx  # direita do rumo
+    side = 1.0 if right else -1.0
+    # a origem do nó fica na linha do meio: `lane_inside` m para fora da raia
+    ox, oz = start[0] - rx * side * lane_inside, start[1] - rz * side * lane_inside
+    nodes.append(f'''[node name="{name}" type="Node3D" parent="Features/Walls"]
+transform = Transform3D({basis(heading_yaw)}, {ox:.2f}, 0, {oz:.2f})
+script = ExtResource("wallride")
+radius = {radius}
+arc_degrees = {abs(turn)}
+turn_right = {"true" if right else "false"}
+material = ExtResource("ramp_dirt")
+''')
+    cx, cz = ox + rx * side * radius, oz + rz * side * radius
+    pts = []
+    n = max(4, int(abs(turn) / 10))
+    # virar à direita diminui o yaw (no Godot, yaw maior = virar à esquerda)
+    for k in range(n + 1):
+        pts.append(rotate_about((cx, cz), start, -turn * k / n))
+    end = pts[-1]
+    keep.append((cx, cz, radius + 10))
+    return end, heading_yaw - turn, pts
+
+
 def double(prefix, x, z, yaw, length, height, base, gap, ring_y=0.0, ring_radius=3.6):
     """Salto de mão dupla: duas rampas iguais, uma de frente para a outra, com `gap` m entre os
     lábios. Num sentido a 1ª decola e a descida da 2ª é o pouso; no outro, o contrário.
@@ -163,45 +200,82 @@ def tabletop(prefix, x, z, yaw, length, top, height, base, ring_y=0.0, ring_radi
     keep.append((x + fx * total * 0.5, z + fz * total * 0.5, total * 0.5 + 8))
 
 
-# Mapa condensado: vale de ~80 m de raio, atrações perto umas das outras. Todos os saltos
-# são de mão dupla (pares espelhados ou mesas simétricas) e as argolas ficam no alto do voo.
-# A moto larga em (0, 62) olhando para -Z.
-FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 80.0, 100.0, 130.0
+# Dois circuitos fechados de mão dupla: retas de saltos ligadas por curvas de wallride
+# (na raia de dentro faz a curva no fundo; rápido pelo meio, sobe na parede).
+# Leste: mega salto -> wallride -> salto grande + salto médio -> wallride.
+# Oeste: wallride -> looping -> salto dos contêineres + costelas -> wallride -> salto A + salto B.
+# As rotas (pontos da raia) vão para tools/desert_routes.json (usadas nos testes).
+FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 84.0, 104.0, 134.0
+TURN_R = 18.0
+routes = {}
 
-# mega salto no meio (argola no alto do voo) e, depois, costelas iguais às do estádio
-double("Mega", 0, 40, 0, 22, 9, 8, 12, 11.2, 4.2)
-for k in range(8):
-    ramp(f"Costela{k + 1}", 0, -24 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
+# ---------------- circuito leste: raias x = 4 (para o sul) e x = 34 (para o norte)
+A_X, B_X, EAST_END = 4.0, 34.0, 44.0
+east = [(A_X, EAST_END)]
+double("Mega", A_X, 24, 0, 22, 9, 8, 12, 11.2, 4.2)
+east.append((A_X, -EAST_END))
+_, _, pts = wallride("CurvaSul", (A_X, -EAST_END), 0, 180, TURN_R)        # vira à direita (+x)
+east += pts
+double("SaltoGrande", B_X, -37, 180, 16, 6, 5, 10, 8.0, 3.8)
+double("SaltoMedio", B_X, 12, 180, 8, 3.2, 3, 8, 5.4, 3.3)
+east.append((B_X, EAST_END))
+_, _, pts = wallride("CurvaNorte", (B_X, EAST_END), 180, 180, TURN_R)      # vira à direita (-x)
+east += pts
+routes["leste"] = east
+
+# ---------------- circuito oeste: raia C (para o sul, com o looping) e raia D (para o norte)
+# O looping é girado 11,5° para a moto sair dele seguindo reto para o sul (pela física natural
+# ela sai ~11,5° para +x da reta de entrada); a curva norte (191,5° à esquerda) entrega a moto
+# já no rumo torto da entrada.
+C_X = -24.0
+W_R = 16.0
+LANE_W = W_R - 3.0
+LOOP_TILT = 11.5
+loop_exit = (7.99, -2.85)          # saída do looping girado, a partir da origem dele
+loop_lead = rotate_about((0.0, 0.0), (0.0, 4.0), LOOP_TILT)   # começo da reta de entrada
+loop_o = (C_X - loop_exit[0], 0.0)
+WEST_TOP = 34.0
+# curva norte: começa na raia D andando para o norte (+z); à esquerda de +z fica +x
+turn_n = -(180.0 + LOOP_TILT)
+# acha a raia D para o fim da curva cair no começo da reta de entrada do looping
+lead_x = loop_o[0] + loop_lead[0]
+probe = rotate_about((0.0, 0.0), (-LANE_W, 0.0), -turn_n)      # fim relativo ao centro
+D_X = lead_x - probe[0] - LANE_W
+center_n = (D_X + LANE_W, WEST_TOP)
+end_n = rotate_about(center_n, (D_X, WEST_TOP), -turn_n)
+loop_o = (loop_o[0], end_n[1] - loop_lead[1])
+west = [(D_X, WEST_TOP)]
+_, _, pts = wallride("CurvaOesteNorte", (D_X, WEST_TOP), 180, turn_n, W_R)
+west += pts
+loop("Looping", loop_o[0], loop_o[1], LOOP_TILT, 7.5, 8.5)
+keep.append((loop_o[0] + 4, loop_o[1], 14))
+lane_c_top = loop_o[1] + loop_exit[1] - 4.0
+west.append((C_X, lane_c_top))
+container_mid = double("Conteiner", C_X, lane_c_top - 4, 0, 8, 3.2, 3, 12)
+WEST_BOTTOM = -34.0
+for k in range(5):
+    ramp(f"Costela{k + 1}", C_X, -17 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
          crest=0.7, bump=True)
-keep.append((0, -36, 14))
-
-# loopings dos dois lados da mega. Só física natural: a moto sai do looping seguindo reto a
-# ~11,5° para a direita (+x) da reta de entrada (medido nas simulações, a toda); o salto que
-# vem depois de cada um está alinhado com essa saída.
-EXIT_YAW = -11.5
-loop("Looping", -30, 36, 0, 7.5, 8.5)          # sai em x ~ -22 -> salto dos contêineres
-keep.append((-26, 36, 14))
-loop("LoopingGrande", 26, 38, 0, 9.0, 10.0)    # sai em x ~ 36 -> salto com argola
-keep.append((31, 38, 16))
-
-# salto sobre contêineres, na linha de saída do looping pequeno (contêineres no vão)
-container_mid = double("Conteiner", -16.0, 4, EXIT_YAW, 8, 3.2, 3, 12)
-# salto com argola na linha de saída do looping grande
-double("Saida", 44, -4, EXIT_YAW, 9, 4.5, 2, 14, 7.4, 3.6)
-
-# saltos médios com argola, nas laterais
-double("SaltoA", -50, 24, 0, 9, 4.5, 2, 14, 7.4, 3.6)
-double("SaltoB", 14, 22, 0, 9, 4.5, 2, 14, 7.4, 3.6)
-
-# mesas grandes simétricas no sul, com argola sobre o topo
-tabletop("MesaOeste", -40, -22, 0, 16, 10, 6, 5, 9.9, 3.6)
-double("SaltoSul", 26, -30, 0, 16, 6, 5, 10, 8.0, 3.8)
+keep.append((C_X, -24, 10))
+west.append((C_X, WEST_BOTTOM))
+# curva sul com o raio exato para a raia D sair reta até o começo da curva norte
+_, _, pts = wallride("CurvaOesteSul", (C_X, WEST_BOTTOM), 0, -180, (C_X - D_X) / 2.0 + 3.0)  # à esquerda (-x)
+west += pts
+D_X2 = west[-1][0]
+double("SaltoA", D_X2, -29, 180, 9, 4.5, 2, 14, 7.4, 3.6)
+double("SaltoB", D_X2, 8, 180, 8, 3.2, 3, 6, 5.4, 3.3)
+west.append((D_X2, WEST_TOP))
+routes["oeste"] = west
+print("oeste: raia D em x = %.2f (curva sul termina em %.2f); looping em %s, fim da curva norte %s, entrada %s" % (
+    D_X, D_X2, tuple(round(v, 2) for v in loop_o), tuple(round(v, 2) for v in end_n),
+    (round(loop_o[0] + loop_lead[0], 2), round(loop_o[1] + loop_lead[1], 2))))
 
 # contêineres atravessados no vão do salto "Conteiner": (x, z, giro em graus)
-import math as _m
-_r = (_m.cos(_m.radians(EXIT_YAW)), -_m.sin(_m.radians(EXIT_YAW)))  # direita do caminho
-containers = [(round(container_mid[0] + _r[0] * k, 2), round(container_mid[1] + _r[1] * k, 2), EXIT_YAW + 90.0)
-              for k in (-3.0, 3.0)]
+containers = [(round(container_mid[0] + k, 2), round(container_mid[1], 2), 90.0) for k in (-3.0, 3.0)]
+
+import json as _json
+with open(os.path.join("tools", "desert_routes.json"), "w") as _f:
+    _json.dump(routes, _f)
 
 nodes_text = "\n".join(nodes)
 # ---- ext resources novos
@@ -213,6 +287,7 @@ s = s[:last.end()] + "\n".join([
     '[ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]',
     '[ext_resource type="Script" path="res://scripts/tracks/fire_ring.gd" id="fire_ring"]',
     '[ext_resource type="Script" path="res://scripts/tracks/loop.gd" id="loop"]',
+    '[ext_resource type="Script" path="res://scripts/tracks/wallride.gd" id="wallride"]',
     '[ext_resource type="Script" path="res://scripts/ui/free_roam_hud.gd" id="free_roam_hud"]',
     '[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_whoosh.wav" id="sfx_whoosh"]',
     '[ext_resource type="AudioStream" path="res://assets/audio/sfx/wind_loop.wav" id="sfx_wind"]',
@@ -225,7 +300,7 @@ floor_radius = {FLOOR_RADIUS}
 cliff_radius = {CLIFF_RADIUS}
 map_half_size = {MAP_HALF}
 prop_count = 110
-mesas = Array[Vector4]([Vector4(-66, -54, 10.0, 10.0), Vector4(-64, 52, 9.0, 8.0), Vector4(66, 58, 9.0, 9.0), Vector4(62, -54, 10.0, 9.0)])
+mesas = Array[Vector4]([Vector4(-78, -50, 9.0, 10.0), Vector4(-76, 56, 8.0, 8.0), Vector4(74, 52, 9.0, 9.0), Vector4(70, -56, 9.0, 9.0)])
 keep_out = PackedVector3Array({keep_text})
 container_spots = PackedVector3Array({", ".join(f"{x}, {z}, {r}" for x, z, r in containers)})
 terrain_material = ExtResource("desert_terrain")
@@ -235,6 +310,8 @@ terrain_material = ExtResource("desert_terrain")
 [node name="Ramps" type="Node3D" parent="Features"]
 
 [node name="Loops" type="Node3D" parent="Features"]
+
+[node name="Walls" type="Node3D" parent="Features"]
 
 [node name="Rings" type="Node3D" parent="Features"]
 

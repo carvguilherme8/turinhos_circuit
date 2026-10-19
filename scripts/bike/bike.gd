@@ -36,6 +36,8 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export_range(0.0, 1.0) var ground_roll_follow: float = 0.0
 ## Chão mais inclinado que isto (normal.y menor) vira a referência de "em pé" (looping, paredes).
 @export_range(0.0, 1.0) var steep_ground: float = 0.6
+## A partir desta inclinação (normal.y menor; 0,85 = ~32°) a moto começa a acompanhar o chão.
+@export_range(0.0, 1.0) var bank_follow_start: float = 0.85
 @export var rider_texture: Texture2D
 
 @export_group("Visual")
@@ -425,13 +427,17 @@ func _alignment_angle() -> float:
 	return rad_to_deg(sqrt(pitch_error * pitch_error + roll_error * roll_error))
 
 
-## "Em pé" para a moto: a vertical do mundo; mas em chão muito inclinado (paredes, looping)
-## e com as rodas nele, o próprio chão (senão ela tentaria se desvirar no meio do looping).
+## "Em pé" para a moto: a vertical do mundo em chão plano ou pouco inclinado (berms, bordas da
+## pista); em chão muito inclinado (paredes, wallride, looping) e com as rodas nele, o próprio
+## chão, com uma passagem gradual entre os dois (`bank_follow_start` até `steep_ground`).
 func _upright_reference() -> Vector3:
-	if is_grounded() and _ground_normal.y < steep_ground:
-		_steep_normal = _ground_normal
-		_steep_clock = _clock
-		return _ground_normal
+	if is_grounded() and _ground_normal.y < bank_follow_start:
+		var follow := 1.0 if _ground_normal.y <= steep_ground else 				smoothstep(bank_follow_start, steep_ground, _ground_normal.y)
+		var reference := Vector3.UP.slerp(_ground_normal, follow).normalized()
+		if _ground_normal.y < steep_ground:
+			_steep_normal = _ground_normal
+			_steep_clock = _clock
+		return reference
 	# Rodas descolaram por um instante no looping (no topo, por exemplo): continua usando o
 	# chão de antes por meio segundo, senão a moto seria dada como "de cabeça para baixo".
 	if _clock - _steep_clock < 0.5:
