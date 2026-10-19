@@ -19,12 +19,16 @@ const PANORAMA_COUNT := 3
 @export var color_bg: Color = Color(0.08, 0.07, 0.12, 0.92)
 @export var color_edge: Color = Color("e8572a")
 
-## Duas camadas de fundo: a de cima aparece por cima da de baixo e as duas trocam de papel.
-var _photos: Array[TextureRect] = []
-var _front := 0
+## Fundo desenhado à mão (em posição fracionária, sem arredondar para o pixel: o zoom lento
+## não treme). A foto nova aparece por cima da anterior, que continua no zoom em que estava.
+var _backdrop: Control
+var _current: Texture2D
+var _previous: Texture2D
+var _previous_zoom := 1.0
+var _fade := 1.0
 var _photo_index := 0
 var _clock := 0.0
-var _track_label: Label
+var _track_button: Button
 var _start_button: Button
 var _menu: VBoxContainer
 var _loading: Label
@@ -40,19 +44,15 @@ func _ready() -> void:
 	_sfx = AudioStreamPlayer.new()
 	_sfx.volume_db = -6.0
 	add_child(_sfx)
-	for i in 2:
-		var photo := TextureRect.new()
-		photo.set_anchors_preset(Control.PRESET_FULL_RECT)
-		photo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		photo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		photo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(photo)
-		_photos.append(photo)
+	_backdrop = Control.new()
+	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_backdrop.draw.connect(_draw_backdrop)
+	add_child(_backdrop)
 	_add_shade()
 	_build_menu()
 	_show_track(true)
-	resized.connect(_update_pivots)
-	_update_pivots()
 
 
 func _process(delta: float) -> void:
@@ -60,28 +60,18 @@ func _process(delta: float) -> void:
 		_poll_loading()
 		return
 	_clock += delta
-	# zoom lento na foto da frente
-	var front := _photos[_front]
-	front.scale = Vector2.ONE * lerpf(1.0, zoom, clampf(_clock / (photo_time + fade_time), 0.0, 1.0))
+	_fade = minf(1.0, _fade + delta / fade_time)
 	if _clock >= photo_time and _textures.size() > 1:
 		_photo_index = (_photo_index + 1) % _textures.size()
 		_crossfade(_textures[_photo_index])
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _loading_path != "":
-		return
-	for dir in [["ui_left", -1], ["ui_right", 1]]:
-		if event.is_action_pressed(dir[0]):
-			get_viewport().set_input_as_handled()
-			_change_track(dir[1])
+	_backdrop.queue_redraw()
 
 
 # ---------------------------------------------------------------- fundo
 
 ## Carrega as fotos da pista escolhida (só elas) e mostra a primeira.
 func _show_track(instant := false) -> void:
-	_track_label.text = PlayerProfile.track_name()
+	_track_button.text = PlayerProfile.track_name()
 	_textures.clear()
 	var id := PlayerProfile.track_scene().get_file().get_basename()
 	for n in PANORAMA_COUNT:
@@ -92,30 +82,42 @@ func _show_track(instant := false) -> void:
 	if _textures.is_empty():
 		return
 	if instant:
-		_photos[_front].texture = _textures[0]
-		_photos[_front].modulate.a = 1.0
-		_photos[1 - _front].modulate.a = 0.0
+		_current = _textures[0]
+		_previous = null
+		_fade = 1.0
 		_clock = 0.0
 	else:
 		_crossfade(_textures[0])
 
 
 func _crossfade(texture: Texture2D) -> void:
-	var back := _photos[1 - _front]
-	back.texture = texture
-	back.scale = Vector2.ONE
-	back.modulate.a = 0.0
-	move_child(back, _photos[_front].get_index())  # a nova entra por cima
-	move_child(_photos[_front], back.get_index() - 1)
-	var tween := create_tween()
-	tween.tween_property(back, "modulate:a", 1.0, fade_time)
-	_front = 1 - _front
+	_previous = _current
+	_previous_zoom = _zoom_at(_clock)
+	_current = texture
+	_fade = 0.0
 	_clock = 0.0
 
 
-func _update_pivots() -> void:
-	for photo in _photos:
-		photo.pivot_offset = size * 0.5
+func _zoom_at(clock: float) -> float:
+	var t := clampf(clock / (photo_time + fade_time), 0.0, 1.0)
+	return lerpf(1.0, zoom, t)
+
+
+func _draw_backdrop() -> void:
+	if _previous and _fade < 1.0:
+		_draw_cover(_previous, _previous_zoom, 1.0)
+	if _current:
+		_draw_cover(_current, _zoom_at(_clock), smoothstep(0.0, 1.0, _fade))
+
+
+## Desenha a foto cobrindo a tela inteira (corta as sobras), ampliada em volta do centro.
+func _draw_cover(texture: Texture2D, scale_by: float, alpha: float) -> void:
+	var area := _backdrop.size
+	var tex_size := texture.get_size()
+	var fit := maxf(area.x / tex_size.x, area.y / tex_size.y) * scale_by
+	var draw_size := tex_size * fit
+	var rect := Rect2((area - draw_size) * 0.5, draw_size)
+	_backdrop.draw_texture_rect(texture, rect, false, Color(1, 1, 1, alpha))
 
 
 ## Escurece o lado esquerdo (onde fica o menu) e um pouco embaixo.
@@ -154,16 +156,25 @@ func _build_menu() -> void:
 	_menu.add_child(_make_label("PISTA", 22, Color(1, 1, 1, 0.7)))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	# As setas são para o mouse e o toque; no teclado e no controle, a pista entra na lista
+	# (cima/baixo) e, com ela selecionada, esquerda/direita trocam.
 	var prev := _make_button("<", 34)
 	prev.custom_minimum_size = Vector2(64, 64)
+	prev.focus_mode = Control.FOCUS_NONE
 	prev.pressed.connect(_change_track.bind(-1))
 	row.add_child(_panel(prev))
-	_track_label = _make_label("", 40)
-	_track_label.custom_minimum_size = Vector2(300, 64)
-	_track_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(_panel(_track_label))
+	_track_button = _make_button("", 40)
+	_track_button.custom_minimum_size = Vector2(300, 64)
+	_track_button.pressed.connect(_change_track.bind(1))
+	_track_button.gui_input.connect(func(event: InputEvent):
+		for dir in [["ui_left", -1], ["ui_right", 1]]:
+			if event.is_action_pressed(dir[0]):
+				_track_button.accept_event()
+				_change_track(dir[1]))
+	row.add_child(_panel(_track_button))
 	var next := _make_button(">", 34)
 	next.custom_minimum_size = Vector2(64, 64)
+	next.focus_mode = Control.FOCUS_NONE
 	next.pressed.connect(_change_track.bind(1))
 	row.add_child(_panel(next))
 	_menu.add_child(row)
@@ -173,7 +184,7 @@ func _build_menu() -> void:
 	_start_button.custom_minimum_size = Vector2(300, 72)
 	_start_button.pressed.connect(_start)
 	_menu.add_child(_panel(_start_button, true))
-	var focusable: Array[Control] = [_start_button]
+	var focusable: Array[Control] = [_track_button, _start_button]
 	if not OS.has_feature("mobile"):
 		var quit := _make_button("FECHAR JOGO", 26)
 		quit.custom_minimum_size = Vector2(300, 56)
@@ -184,6 +195,8 @@ func _build_menu() -> void:
 		var control := focusable[i]
 		control.focus_neighbor_top = control.get_path_to(focusable[(i - 1 + focusable.size()) % focusable.size()])
 		control.focus_neighbor_bottom = control.get_path_to(focusable[(i + 1) % focusable.size()])
+		control.focus_neighbor_left = control.get_path_to(control)
+		control.focus_neighbor_right = control.get_path_to(control)
 	_start_button.grab_focus.call_deferred()
 
 	_loading = _make_label("", 40)
