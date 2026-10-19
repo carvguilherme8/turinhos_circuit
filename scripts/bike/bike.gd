@@ -164,6 +164,8 @@ var _visual_pitch: float = 0.0
 
 func _ready() -> void:
 	landing_assist = player_controlled and GameInput.touch_mode
+	if player_controlled:
+		add_to_group("player_bike")
 	if stats == null:
 		stats = BikeStats.new()
 	mass = stats.mass

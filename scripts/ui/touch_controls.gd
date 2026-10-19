@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## Controles de toque (celular): virar para a esquerda e para a direita no canto esquerdo,
-## acelerar e frear no canto direito, e um botão pequeno de pausa no alto.
+## acelerar e freio de mão (como o espaço no PC, sem ré) no canto direito, e um botão pequeno
+## de pausa no alto.
 ## Cada dedo é seguido pelo índice do toque: dá para acelerar e virar ao mesmo tempo, e
 ## arrastar o dedo de um botão para o outro troca o comando sem levantar.
 ## Os botões só disparam ações do InputMap; a moto não sabe que é toque.
@@ -28,15 +29,15 @@ func _ready() -> void:
 		["esquerda", "<", func(s: Vector2, u: float) -> Rect2: return Rect2(u * 0.4, s.y - u * 1.6, u * 1.2, u * 1.2)],
 		["direita", ">", func(s: Vector2, u: float) -> Rect2: return Rect2(u * 1.8, s.y - u * 1.6, u * 1.2, u * 1.2)],
 		["acelerar", "ACELERAR", func(s: Vector2, u: float) -> Rect2: return Rect2(s.x - u * 1.7, s.y - u * 2.3, u * 1.3, u * 1.9)],
-		["frear", "FREIO", func(s: Vector2, u: float) -> Rect2: return Rect2(s.x - u * 3.2, s.y - u * 1.4, u * 1.3, u * 1.0)],
+		["freio_mao", "FREIO", func(s: Vector2, u: float) -> Rect2: return Rect2(s.x - u * 3.2, s.y - u * 1.4, u * 1.3, u * 1.0)],
 		["pausar", "II", func(s: Vector2, u: float) -> Rect2: return Rect2(s.x * 0.5 - u * 0.3, u * 0.15, u * 0.6, u * 0.5)],
 	]
 	get_viewport().size_changed.connect(_pad.queue_redraw)
 
 
 func _process(_delta: float) -> void:
-	# Fora da pista (menus abertos, jogo pausado) os botões somem e soltam tudo.
-	var show := not get_tree().paused
+	# Fora da pista (tela inicial, menus abertos, jogo pausado) os botões somem e soltam tudo.
+	var show := not get_tree().paused and get_tree().get_first_node_in_group("player_bike") != null
 	if show != _pad.visible:
 		_pad.visible = show
 		if not show:
