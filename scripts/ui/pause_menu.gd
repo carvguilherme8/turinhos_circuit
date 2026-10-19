@@ -1,7 +1,8 @@
 extends CanvasLayer
 ## Menu de pausa (Esc / Start): os botões entram pelas laterais em escada, um depois do outro.
-## O jogo abre nele (com "CORRER" no lugar de "RETOMAR"); a contagem só começa depois.
-## À esquerda: retomar, pista (estádio ou fazenda), customizar piloto e fechar o jogo. A customização entra pela direita
+## Aberta direto pelo editor (F6), a pista começa nele (com "CORRER" no lugar de "RETOMAR");
+## vinda da tela inicial, a corrida já começa. A contagem só anda com o menu fechado.
+## À esquerda: retomar, trocar de pista (volta para a tela inicial), customizar piloto e fechar o jogo. A customização entra pela direita
 ## (o menu da esquerda sai, para a moto ficar à vista): número, cor do uniforme e cor da moto
 ## (a moto do jogador se repinta na hora).
 
@@ -15,10 +16,7 @@ const GAME_FONT := preload("res://assets/fonts/russo_one/RussoOne-Regular.ttf")
 
 ## Já saiu do menu inicial nesta sessão: reiniciar a corrida não volta para ele.
 static var _race_started := false
-## Acabou de trocar de pista pelo menu: a cena nova abre com o foco no item da pista.
-static var _focus_track := false
-## Cenas das pistas, carregadas e geradas no início do jogo (trocar de pista fica rápido).
-static var _track_scenes: Array[PackedScene] = []
+const TITLE_SCENE := "res://scenes/ui/title_screen.tscn"
 
 ## Abre o jogo no menu, antes da largada.
 @export var start_in_menu: bool = true
@@ -43,7 +41,6 @@ var _bike_buttons: Array[Button] = []
 var _tween: Tween
 var _title: Label
 var _first_button: Button
-var _track_button: Button
 var _starting := false
 var _sfx: AudioStreamPlayer
 ## Foco posto pelo próprio menu (ao abrir/trocar de painel): não toca o som de mover.
@@ -72,16 +69,12 @@ func _ready() -> void:
 		_start.call_deferred()
 
 
-## Menu inicial. Se abriu numa pista diferente da escolhida (o jogo sempre começa no estádio),
-## carrega a escolhida antes.
+## A tela inicial chama isto antes de abrir a pista: a corrida começa sem o menu.
+static func skip_start_menu() -> void:
+	_race_started = true
+
+
 func _start() -> void:
-	if _track_scenes.is_empty():
-		_preload_tracks()
-	var current := get_tree().current_scene
-	if current and current.scene_file_path != PlayerProfile.track_scene():
-		get_tree().paused = true
-		_go_to_track()
-		return
 	open(true)
 
 
@@ -114,8 +107,7 @@ func open(start := false) -> void:
 	_restart_tween()
 	_tween.tween_property(_dim, "modulate:a", 1.0, slide_time)
 	_slide(_main_steps, true, true)
-	_focus_quietly.call_deferred(_track_button if _focus_track else _first_button)
-	_focus_track = false
+	_focus_quietly.call_deferred(_first_button)
 
 
 func close() -> void:
@@ -140,7 +132,7 @@ func _build_main() -> void:
 	_main_steps.append(_add_step(_title, 0, true, Vector2(button_size.x, 56.0), false))
 	var entries := [
 		["RETOMAR", close],
-		["PISTA", func(): _change_track(1)],
+		["TROCAR PISTA", _go_to_title],
 		["CUSTOMIZAR PILOTO", _open_custom],
 		["FECHAR JOGO", func(): get_tree().quit()],
 	]
@@ -150,47 +142,14 @@ func _build_main() -> void:
 		_main_steps.append(_add_step(button, i + 1, true, button_size))
 		if i == 0:
 			_first_button = button
-		elif i == 1:
-			_track_button = button
-	_track_button.text = "PISTA:  < %s >" % PlayerProfile.track_name()
-	# Na pista, esquerda/direita também trocam.
-	_track_button.gui_input.connect(func(event: InputEvent):
-		for dir in [["ui_left", -1], ["ui_right", 1]]:
-			if event.is_action_pressed(dir[0]):
-				_track_button.accept_event()
-				_play(SFX_SELECT)
-				_change_track(dir[1]))
 	_link_focus(_main_steps.slice(1).map(func(step): return step.get_child(0)))
 
 
-## Troca a pista escolhida e carrega a cena dela (a corrida recomeça no menu inicial).
-func _change_track(step: int) -> void:
-	PlayerProfile.set_track(PlayerProfile.track_index + step)
-	_track_button.text = "PISTA:  < %s >" % PlayerProfile.track_name()
+## Volta para a tela inicial (lá se escolhe a pista e começa de novo).
+func _go_to_title() -> void:
 	_race_started = false
-	_focus_track = true
-	_go_to_track.call_deferred()
-
-
-func _go_to_track() -> void:
-	var scene := _track_scenes[PlayerProfile.track_index] if PlayerProfile.track_index < _track_scenes.size() else null
-	if scene:
-		get_tree().change_scene_to_packed(scene)
-	else:
-		get_tree().change_scene_to_file(PlayerProfile.track_scene())
-
-
-## Carrega todas as pistas e gera o que é pesado (terreno, arquibancadas) uma vez, sem mostrar:
-## os scripts guardam o resultado e a troca de pista depois só remonta os nós.
-func _preload_tracks() -> void:
-	for track in PlayerProfile.TRACKS:
-		var scene := load(track[1]) as PackedScene
-		_track_scenes.append(scene)
-		var instance := scene.instantiate()
-		for node in instance.find_children("*", "", true, false):
-			if node.has_method("_cache_key"):
-				node._rebuild()
-		instance.free()
+	get_tree().paused = false
+	get_tree().change_scene_to_file.call_deferred(TITLE_SCENE)
 
 
 func _build_custom() -> void:
