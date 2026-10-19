@@ -77,9 +77,9 @@ altitude = 95.0''' + s[clouds_end:]
 
 # ---- moto do jogador no ponto de partida (olhando para -Z)
 s = re.sub(r'(\[node name="Bike" parent="\." instance=ExtResource\("bike"\)\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.8, 42)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 1.0, 26)\n', s)
 s = re.sub(r'(\[node name="ChaseCamera"[^\]]*\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.8, 48)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 4.0, 32)\n', s)
 
 
 # ---- atrações
@@ -203,7 +203,7 @@ def tabletop(prefix, x, z, yaw, length, top, height, base, ring_y=0.0, ring_radi
 # Dois circuitos fechados de mão dupla: retas de saltos ligadas por curvas de wallride
 # (na raia de dentro faz a curva no fundo; rápido pelo meio, sobe na parede).
 # Leste: mega salto -> wallride -> salto grande + salto médio -> wallride.
-# Oeste: wallride -> looping -> salto dos contêineres -> wallride -> salto A + costelas.
+# Oeste: wallride -> looping -> wallride -> salto sobre os contêineres.
 # Depois de cada salto fica espaço para o pouso e a rolagem (~14 m) antes do próximo obstáculo.
 # As rotas (pontos da raia) vão para tools/desert_routes.json (usadas nos testes).
 FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 84.0, 104.0, 134.0
@@ -225,50 +225,47 @@ east += pts
 routes["leste"] = east
 
 # ---------------- circuito oeste: raia C (para o sul, com o looping) e raia D (para o norte)
-# O looping é girado 11,5° para a moto sair dele seguindo reto para o sul (pela física natural
-# ela sai ~11,5° para +x da reta de entrada); a curva norte (191,5° à esquerda) entrega a moto
-# já no rumo torto da entrada.
+# O looping fica no meio da raia C, entre as duas curvas. Ele é girado 11,5° para a moto sair
+# dele seguindo reto para o sul (pela física natural ela sai ~11,5° para +x da reta de
+# entrada); a curva norte (191,5° à esquerda) entrega a moto nesse rumo torto, e uma reta
+# curta nesse mesmo rumo a leva até a entrada do looping.
 C_X = -24.0
 W_R = 16.0
 LANE_W = W_R - 3.0
 LOOP_TILT = 11.5
+WEST_TOP, WEST_BOTTOM = 34.0, -34.0
 loop_exit = (7.99, -2.85)          # saída do looping girado, a partir da origem dele
 loop_lead = rotate_about((0.0, 0.0), (0.0, 4.0), LOOP_TILT)   # começo da reta de entrada
-loop_o = (C_X - loop_exit[0], 0.0)
-WEST_TOP = 34.0
-# curva norte: começa na raia D andando para o norte (+z); à esquerda de +z fica +x
+LOOP_Z = 2.0                       # origem do looping: meio da raia C (com a reta de entrada)
+loop_o = (C_X - loop_exit[0], LOOP_Z)
+lead_start = (loop_o[0] + loop_lead[0], loop_o[1] + loop_lead[1])
+# a curva norte termina num ponto da reta que sai da entrada do looping para trás (no rumo
+# torto), à altura em que a curva cabe; acha a raia D e esse ponto
 turn_n = -(180.0 + LOOP_TILT)
-# acha a raia D para o fim da curva cair no começo da reta de entrada do looping
-lead_x = loop_o[0] + loop_lead[0]
-probe = rotate_about((0.0, 0.0), (-LANE_W, 0.0), -turn_n)      # fim relativo ao centro
-D_X = lead_x - probe[0] - LANE_W
-center_n = (D_X + LANE_W, WEST_TOP)
-end_n = rotate_about(center_n, (D_X, WEST_TOP), -turn_n)
-loop_o = (loop_o[0], end_n[1] - loop_lead[1])
+back = (math.sin(math.radians(LOOP_TILT)), math.cos(math.radians(LOOP_TILT)))  # para trás do rumo 11,5°
+probe = rotate_about((0.0, 0.0), (-LANE_W, 0.0), -turn_n)      # fim da curva relativo ao centro
+# fim = (D_X + LANE_W + probe.x, WEST_TOP + probe.z) tem de estar na reta lead_start + back * L
+L = (WEST_TOP + probe[1] - lead_start[1]) / back[1]
+end_n = (lead_start[0] + back[0] * L, lead_start[1] + back[1] * L)
+D_X = end_n[0] - probe[0] - LANE_W
 west = [(D_X, WEST_TOP)]
 _, _, pts = wallride("CurvaOesteNorte", (D_X, WEST_TOP), 180, turn_n, W_R)
 west += pts
 loop("Looping", loop_o[0], loop_o[1], LOOP_TILT, 7.5, 8.5)
 keep.append((loop_o[0] + 4, loop_o[1], 14))
-lane_c_top = loop_o[1] + loop_exit[1] - 4.0
-west.append((C_X, lane_c_top))
-container_mid = double("Conteiner", C_X, lane_c_top - 4, 0, 8, 3.2, 3, 12)
-WEST_BOTTOM = -34.0
+west.append(lead_start)
+west.append((C_X, loop_o[1] + loop_exit[1] - 4.0))
 west.append((C_X, WEST_BOTTOM))
 # curva sul com o raio exato para a raia D sair reta até o começo da curva norte
 _, _, pts = wallride("CurvaOesteSul", (C_X, WEST_BOTTOM), 0, -180, (C_X - D_X) / 2.0 + 3.0)  # à esquerda (-x)
 west += pts
 D_X2 = west[-1][0]
-double("SaltoA", D_X2, -26, 180, 9, 4.5, 2, 14, 7.4, 3.6)          # até z = 7,8
-for k in range(4):
-    ramp(f"Costela{k + 1}", D_X2, 18 + k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
-         crest=0.7, bump=True)
-keep.append((D_X2, 23, 9))
+# salto sobre os contêineres (contêineres no vão)
+container_mid = double("Conteiner", D_X2, -26, 180, 8, 3.2, 3, 12)
 west.append((D_X2, WEST_TOP))
 routes["oeste"] = west
-print("oeste: raia D em x = %.2f (curva sul termina em %.2f); looping em %s, fim da curva norte %s, entrada %s" % (
-    D_X, D_X2, tuple(round(v, 2) for v in loop_o), tuple(round(v, 2) for v in end_n),
-    (round(loop_o[0] + loop_lead[0], 2), round(loop_o[1] + loop_lead[1], 2))))
+print("oeste: raia D em x = %.2f (curva sul termina em %.2f); reta torta de %.1f m até o looping em %s" % (
+    D_X, D_X2, L, tuple(round(v, 2) for v in loop_o)))
 
 # contêineres atravessados no vão do salto "Conteiner": (x, z, giro em graus)
 containers = [(round(container_mid[0] + k, 2), round(container_mid[1], 2), 90.0) for k in (-3.0, 3.0)]

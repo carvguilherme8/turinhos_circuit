@@ -2,9 +2,12 @@
 extends Node3D
 ## Curva de wallride: uma calha em arco. O fundo tem uma inclinação leve e, por fora, a parede
 ## sobe em curva até quase a vertical. Devagar, a moto faz a curva embaixo; rápido, sobe na
-## parede (física natural: a força centrífuga a segura). Nas pontas a parede baixa até o chão,
-## para entrar e sair sem degrau. Funciona nos dois sentidos.
-## A curva começa na origem, andando para -Z, e vira para a direita (+X) ou para a esquerda.
+## parede (física natural: a força centrífuga a segura). A parede tem a altura cheia na curva
+## inteira e baixa até o chão em duas retas de transição (`lead_length`), uma antes e outra
+## depois: entra-se subindo suave e quem está alto na parede tem espaço para descer junto com
+## ela na saída. Funciona nos dois sentidos.
+## A curva começa na origem, andando para -Z, e vira para a direita (+X) ou para a esquerda;
+## a reta de entrada fica antes da origem (em +Z) e a de saída depois do fim da curva.
 
 ## Raio da linha do meio da curva (m), ângulo da curva (graus) e o lado.
 @export var radius: float = 16.0:
@@ -23,12 +26,12 @@ extends Node3D
 @export var inner_width: float = 5.0
 @export var wall_start: float = 1.5
 ## Raio da curva da parede (m): ela sobe até `wall_height`, quase na vertical.
-@export var wall_radius: float = 6.0
-@export var wall_height: float = 5.5
+@export var wall_radius: float = 8.0
+@export var wall_height: float = 9.5
 ## Inclinação do fundo (graus).
 @export var floor_bank: float = 10.0
-## Ângulo (graus) nas pontas em que a parede baixa até o chão.
-@export var taper_degrees: float = 40.0
+## Comprimento das retas de transição (m), em que a parede baixa até o chão.
+@export var lead_length: float = 20.0
 @export var material: Material
 @export var top_color: Color = Color(0.85, 0.85, 0.82)
 
@@ -91,29 +94,44 @@ func _rebuild() -> void:
 		s_samples.append(lerpf(-inner_width, wall_start, float(k) / 5.0))
 	for k in range(1, 15):
 		s_samples.append(wall_start + (s_end - wall_start) * float(k) / 14.0)
-	var rows: Array = []
+	# Seções ao longo do caminho: reta de entrada (subindo), a curva (altura cheia) e a reta de
+	# saída (descendo). Cada seção: [ponto da linha do meio, direção para fora, altura 0..1].
+	var sections: Array = []
+	var lead_steps := maxi(4, int(lead_length / 1.5))
+	var exit_dir := Vector3(sin(arc) * _side(), 0.0, -cos(arc))   # rumo no fim da curva
+	for k in lead_steps:
+		var t := float(k) / lead_steps
+		sections.append([_centerline(0.0) + Vector3(0, 0, lead_length * (1.0 - t)), _outward(0.0), t])
 	for i in steps + 1:
 		var phi := arc * float(i) / steps
-		var ends := minf(phi, arc - phi)
-		var taper := smoothstep(0.0, deg_to_rad(taper_degrees), ends)
-		# Nas pontas o perfil inteiro encolhe na altura (mesma forma côncava, sem prateleira nem
-		# crista: quem chega reto sobe liso), chega a zero e afunda um pouco sob o chão (entrada
-		# sem degrau e sem o piso e o chão "brigarem" na tela).
+		sections.append([_centerline(phi), _outward(phi), 1.0])
+	for k in range(1, lead_steps + 1):
+		var t := float(k) / lead_steps
+		sections.append([_centerline(arc) + exit_dir * lead_length * t, _outward(arc), 1.0 - t])
+	var rows: Array = []
+	var row_out: Array[Vector3] = []
+	for section in sections:
+		var base: Vector3 = section[0]
+		var out: Vector3 = section[1]
+		# Nas retas o perfil inteiro encolhe na altura (mesma forma côncava, sem prateleira nem
+		# crista), chega a zero e afunda um pouco sob o chão na ponta (sem degrau e sem o piso e o
+		# chão "brigarem" na tela).
+		var taper := smoothstep(0.0, 1.0, section[2])
 		var scale := taper * minf(1.0, wall_height / top)
 		var sink := 0.03 * (1.0 - taper)
 		var row: Array[Vector3] = []
 		for s in s_samples:
-			row.append(_centerline(phi) + _outward(phi) * s + Vector3.UP * (_profile(s) * scale - sink))
+			row.append(base + out * s + Vector3.UP * (_profile(s) * scale - sink))
 		# borda de cima da parede e o lado de fora descendo até o chão (parede maciça)
 		var last: Vector3 = row[row.size() - 1]
-		row.append(last + _outward(phi) * 0.6)
+		row.append(last + out * 0.6)
 		row.append(Vector3(row[row.size() - 1].x, 0.0, row[row.size() - 1].z))
 		rows.append(row)
+		row_out.append(out)
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var faces := PackedVector3Array()
-	var c := center()
 	for i in rows.size() - 1:
 		var a: Array = rows[i]
 		var b: Array = rows[i + 1]
@@ -122,8 +140,7 @@ func _rebuild() -> void:
 			var tris: Array = [[quad[0], quad[1], quad[2]], [quad[0], quad[2], quad[3]]]
 			# Piso e parede: frente para dentro da curva e para cima; lado de fora da parede
 			# (as duas últimas faixas): frente para fora.
-			var mid: Vector3 = (quad[0] + quad[2]) * 0.5
-			var inward := Vector3(c.x - mid.x, 0.0, c.z - mid.z).normalized()
+			var inward := -(row_out[i] + row_out[i + 1]).normalized()
 			var facing := inward + Vector3.UP * 0.5 if k < a.size() - 2 else -inward
 			for tri in tris:
 				var p0: Vector3 = tri[0]
