@@ -28,7 +28,7 @@ extends Node3D
 ## Inclinação do fundo (graus).
 @export var floor_bank: float = 10.0
 ## Ângulo (graus) nas pontas em que a parede baixa até o chão.
-@export var taper_degrees: float = 30.0
+@export var taper_degrees: float = 40.0
 @export var material: Material
 @export var top_color: Color = Color(0.85, 0.85, 0.82)
 
@@ -64,15 +64,14 @@ func _outward(phi: float) -> Vector3:
 	return Vector3(-cos(phi) * _side(), 0.0, -sin(phi))
 
 
-## Altura do perfil a `s` metros da linha do meio (para fora > 0), com a parede limitada a
-## `limit` (pontas da curva).
-func _profile(s: float, limit: float) -> float:
+## Altura do perfil a `s` metros da linha do meio (para fora > 0).
+func _profile(s: float) -> float:
 	var bank := tan(deg_to_rad(floor_bank))
 	var h := (s + inner_width) * bank
 	if s > wall_start:
 		var x := minf(s - wall_start, wall_radius * 0.985)
 		h = (wall_start + inner_width) * bank + wall_radius - sqrt(wall_radius * wall_radius - x * x)
-	return minf(h, limit)
+	return h
 
 
 func _rebuild() -> void:
@@ -97,13 +96,14 @@ func _rebuild() -> void:
 		var phi := arc * float(i) / steps
 		var ends := minf(phi, arc - phi)
 		var taper := smoothstep(0.0, deg_to_rad(taper_degrees), ends)
-		var limit := minf(wall_height, top) * taper
-		# Nas pontas a superfície chega a zero e afunda um pouco sob o chão: entrada sem degrau
-		# (e sem o piso e o chão "brigarem" na tela).
+		# Nas pontas o perfil inteiro encolhe na altura (mesma forma côncava, sem prateleira nem
+		# crista: quem chega reto sobe liso), chega a zero e afunda um pouco sob o chão (entrada
+		# sem degrau e sem o piso e o chão "brigarem" na tela).
+		var scale := taper * minf(1.0, wall_height / top)
 		var sink := 0.03 * (1.0 - taper)
 		var row: Array[Vector3] = []
 		for s in s_samples:
-			row.append(_centerline(phi) + _outward(phi) * s + Vector3.UP * (_profile(s, limit) - sink))
+			row.append(_centerline(phi) + _outward(phi) * s + Vector3.UP * (_profile(s) * scale - sink))
 		# borda de cima da parede e o lado de fora descendo até o chão (parede maciça)
 		var last: Vector3 = row[row.size() - 1]
 		row.append(last + _outward(phi) * 0.6)

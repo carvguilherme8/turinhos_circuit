@@ -203,7 +203,8 @@ def tabletop(prefix, x, z, yaw, length, top, height, base, ring_y=0.0, ring_radi
 # Dois circuitos fechados de mão dupla: retas de saltos ligadas por curvas de wallride
 # (na raia de dentro faz a curva no fundo; rápido pelo meio, sobe na parede).
 # Leste: mega salto -> wallride -> salto grande + salto médio -> wallride.
-# Oeste: wallride -> looping -> salto dos contêineres + costelas -> wallride -> salto A + salto B.
+# Oeste: wallride -> looping -> salto dos contêineres -> wallride -> salto A + costelas.
+# Depois de cada salto fica espaço para o pouso e a rolagem (~14 m) antes do próximo obstáculo.
 # As rotas (pontos da raia) vão para tools/desert_routes.json (usadas nos testes).
 FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 84.0, 104.0, 134.0
 TURN_R = 18.0
@@ -216,8 +217,8 @@ double("Mega", A_X, 24, 0, 22, 9, 8, 12, 11.2, 4.2)
 east.append((A_X, -EAST_END))
 _, _, pts = wallride("CurvaSul", (A_X, -EAST_END), 0, 180, TURN_R)        # vira à direita (+x)
 east += pts
-double("SaltoGrande", B_X, -37, 180, 16, 6, 5, 10, 8.0, 3.8)
-double("SaltoMedio", B_X, 12, 180, 8, 3.2, 3, 8, 5.4, 3.3)
+double("SaltoGrande", B_X, -40, 180, 16, 6, 5, 10, 8.0, 3.8)      # até z = 3,8
+double("SaltoMedio", B_X, 18, 180, 8, 3.2, 3, 6, 5.4, 3.3)        # 14 m de rolagem antes
 east.append((B_X, EAST_END))
 _, _, pts = wallride("CurvaNorte", (B_X, EAST_END), 180, 180, TURN_R)      # vira à direita (-x)
 east += pts
@@ -253,17 +254,16 @@ lane_c_top = loop_o[1] + loop_exit[1] - 4.0
 west.append((C_X, lane_c_top))
 container_mid = double("Conteiner", C_X, lane_c_top - 4, 0, 8, 3.2, 3, 12)
 WEST_BOTTOM = -34.0
-for k in range(5):
-    ramp(f"Costela{k + 1}", C_X, -17 - k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
-         crest=0.7, bump=True)
-keep.append((C_X, -24, 10))
 west.append((C_X, WEST_BOTTOM))
 # curva sul com o raio exato para a raia D sair reta até o começo da curva norte
 _, _, pts = wallride("CurvaOesteSul", (C_X, WEST_BOTTOM), 0, -180, (C_X - D_X) / 2.0 + 3.0)  # à esquerda (-x)
 west += pts
 D_X2 = west[-1][0]
-double("SaltoA", D_X2, -29, 180, 9, 4.5, 2, 14, 7.4, 3.6)
-double("SaltoB", D_X2, 8, 180, 8, 3.2, 3, 6, 5.4, 3.3)
+double("SaltoA", D_X2, -26, 180, 9, 4.5, 2, 14, 7.4, 3.6)          # até z = 7,8
+for k in range(4):
+    ramp(f"Costela{k + 1}", D_X2, 18 + k * 3.4, 0, up=1.5, down=1.5, height=0.5, width=8, base=1.2,
+         crest=0.7, bump=True)
+keep.append((D_X2, 23, 9))
 west.append((D_X2, WEST_TOP))
 routes["oeste"] = west
 print("oeste: raia D em x = %.2f (curva sul termina em %.2f); looping em %s, fim da curva norte %s, entrada %s" % (
