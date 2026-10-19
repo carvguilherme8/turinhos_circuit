@@ -27,7 +27,9 @@ GameInput="*res://scripts/core/game_input.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/handheld/orientation=4
 
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2
+textures/vram_compression/import_etc2_astc=true

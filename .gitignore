@@ -28,3 +28,6 @@ desktop.ini
 
 # Cache do Python (tools/)
 __pycache__/
+*.apk
+*.aab
+*.idsig
