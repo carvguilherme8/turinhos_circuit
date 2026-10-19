@@ -77,9 +77,9 @@ altitude = 95.0''' + s[clouds_end:]
 
 # ---- moto do jogador no ponto de partida (olhando para -Z)
 s = re.sub(r'(\[node name="Bike" parent="\." instance=ExtResource\("bike"\)\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 1.0, 26)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 1.0, 30)\n', s)
 s = re.sub(r'(\[node name="ChaseCamera"[^\]]*\]\n)transform = [^\n]*\n',
-           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 4.0, 32)\n', s)
+           r'\1transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 4.0, 36)\n', s)
 
 
 # ---- atrações
@@ -202,23 +202,26 @@ def tabletop(prefix, x, z, yaw, length, top, height, base, ring_y=0.0, ring_radi
 
 # Dois circuitos fechados de mão dupla: retas de saltos ligadas por curvas de wallride
 # (na raia de dentro faz a curva no fundo; rápido pelo meio, sobe na parede).
-# Leste: mega salto -> wallride -> salto grande + salto médio -> wallride.
+# Leste: mega salto -> wallride -> salto grande -> wallride.
 # Oeste: wallride -> looping -> wallride -> salto sobre os contêineres.
-# Depois de cada salto fica espaço para o pouso e a rolagem (~14 m) antes do próximo obstáculo.
+# Cada curva tem retas de transição de 20 m antes e depois (LEAD): os saltos e o looping ficam
+# inteiros entre elas, com espaço para o pouso e a rolagem antes da próxima curva.
 # As rotas (pontos da raia) vão para tools/desert_routes.json (usadas nos testes).
-FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 84.0, 104.0, 134.0
+FLOOR_RADIUS, CLIFF_RADIUS, MAP_HALF = 90.0, 110.0, 140.0
+LEAD = 20.0   # retas de transição das curvas de wallride (scripts/tracks/wallride.gd)
 TURN_R = 18.0
 routes = {}
 
 # ---------------- circuito leste: raias x = 4 (para o sul) e x = 34 (para o norte)
-A_X, B_X, EAST_END = 4.0, 34.0, 44.0
+A_X, B_X, EAST_END = 4.0, 34.0, 50.0
 east = [(A_X, EAST_END)]
-double("Mega", A_X, 24, 0, 22, 9, 8, 12, 11.2, 4.2)
+# raia A (para o sul): transição de 50 a 30, mega salto de 28 a -21,8, transição de -30 a -50
+double("Mega", A_X, EAST_END - LEAD - 2, 0, 18, 7.5, 6, 12, 9.8, 4.0)
 east.append((A_X, -EAST_END))
 _, _, pts = wallride("CurvaSul", (A_X, -EAST_END), 0, 180, TURN_R)        # vira à direita (+x)
 east += pts
-double("SaltoGrande", B_X, -40, 180, 16, 6, 5, 10, 8.0, 3.8)      # até z = 3,8
-double("SaltoMedio", B_X, 18, 180, 8, 3.2, 3, 6, 5.4, 3.3)        # 14 m de rolagem antes
+# raia B (para o norte): transição de -50 a -30, salto grande de -28 a 15,8, transição de 30 a 50
+double("SaltoGrande", B_X, -EAST_END + LEAD + 2, 180, 16, 6, 5, 10, 8.0, 3.8)
 east.append((B_X, EAST_END))
 _, _, pts = wallride("CurvaNorte", (B_X, EAST_END), 180, 180, TURN_R)      # vira à direita (-x)
 east += pts
@@ -233,19 +236,22 @@ C_X = -24.0
 W_R = 16.0
 LANE_W = W_R - 3.0
 LOOP_TILT = 11.5
-WEST_TOP, WEST_BOTTOM = 34.0, -34.0
+WEST_TOP, WEST_BOTTOM = 40.0, -40.0
 loop_exit = (7.99, -2.85)          # saída do looping girado, a partir da origem dele
 loop_lead = rotate_about((0.0, 0.0), (0.0, 4.0), LOOP_TILT)   # começo da reta de entrada
-LOOP_Z = 2.0                       # origem do looping: meio da raia C (com a reta de entrada)
-loop_o = (C_X - loop_exit[0], LOOP_Z)
-lead_start = (loop_o[0] + loop_lead[0], loop_o[1] + loop_lead[1])
-# a curva norte termina num ponto da reta que sai da entrada do looping para trás (no rumo
-# torto), à altura em que a curva cabe; acha a raia D e esse ponto
 turn_n = -(180.0 + LOOP_TILT)
 back = (math.sin(math.radians(LOOP_TILT)), math.cos(math.radians(LOOP_TILT)))  # para trás do rumo 11,5°
 probe = rotate_about((0.0, 0.0), (-LANE_W, 0.0), -turn_n)      # fim da curva relativo ao centro
-# fim = (D_X + LANE_W + probe.x, WEST_TOP + probe.z) tem de estar na reta lead_start + back * L
-L = (WEST_TOP + probe[1] - lead_start[1]) / back[1]
+# looping centralizado entre o fim da curva norte e o começo da curva sul (o meio dele fica
+# ~3,75 m ao sul da origem)
+end_z = WEST_TOP + probe[1]
+LOOP_Z = (end_z + WEST_BOTTOM) / 2.0 + 3.75
+loop_o = (C_X - loop_exit[0], LOOP_Z)
+lead_start = (loop_o[0] + loop_lead[0], loop_o[1] + loop_lead[1])
+# a curva norte termina na reta que sai da entrada do looping para trás (no rumo torto)
+L = (end_z - lead_start[1]) / back[1]
+assert L > LEAD + 4.0, "o looping ficou dentro da transição da curva norte"
+assert loop_o[1] + loop_exit[1] - 4.0 > WEST_BOTTOM + LEAD, "o looping ficou dentro da transição da curva sul"
 end_n = (lead_start[0] + back[0] * L, lead_start[1] + back[1] * L)
 D_X = end_n[0] - probe[0] - LANE_W
 west = [(D_X, WEST_TOP)]
@@ -260,8 +266,8 @@ west.append((C_X, WEST_BOTTOM))
 _, _, pts = wallride("CurvaOesteSul", (C_X, WEST_BOTTOM), 0, -180, (C_X - D_X) / 2.0 + 3.0)  # à esquerda (-x)
 west += pts
 D_X2 = west[-1][0]
-# salto sobre os contêineres (contêineres no vão)
-container_mid = double("Conteiner", D_X2, -26, 180, 8, 3.2, 3, 12)
+# salto sobre os contêineres (contêineres no vão), no meio da raia D, entre as transições
+container_mid = double("Conteiner", D_X2, -15, 180, 8, 3.2, 3, 12)
 west.append((D_X2, WEST_TOP))
 routes["oeste"] = west
 print("oeste: raia D em x = %.2f (curva sul termina em %.2f); reta torta de %.1f m até o looping em %s" % (
