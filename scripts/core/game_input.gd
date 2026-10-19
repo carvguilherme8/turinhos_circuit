@@ -36,7 +36,16 @@ const PAD_BUTTONS := {
 }
 
 
+## Celular (ou o PC aberto com `-- --touch`, para testar com o mouse): mostra os botões de
+## toque e liga a assistência de pouso da moto.
+var touch_mode: bool = OS.has_feature("mobile") or OS.get_cmdline_user_args().has("--touch")
+
+
 func _ready() -> void:
+	if touch_mode:
+		if not OS.has_feature("mobile"):
+			Input.emulate_touch_from_mouse = true
+		add_child(preload("res://scripts/ui/touch_controls.gd").new())
 	for action in ACTIONS:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action, 0.2)

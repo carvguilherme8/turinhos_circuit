@@ -38,6 +38,9 @@ const SAFE_POINT_MIN_AGE := 2.0
 @export_range(0.0, 1.0) var steep_ground: float = 0.6
 ## A partir desta inclinação (normal.y menor; 0,85 = ~32°) a moto começa a acompanhar o chão.
 @export_range(0.0, 1.0) var bank_follow_start: float = 0.85
+## Assistência de pouso (ligada no celular): no ar, sem comando, a moto se ajeita sozinha
+## para pousar alinhada com o chão onde vai cair.
+var landing_assist: bool = false
 @export var rider_texture: Texture2D
 
 @export_group("Visual")
@@ -160,6 +163,7 @@ var _visual_pitch: float = 0.0
 
 
 func _ready() -> void:
+	landing_assist = player_controlled and GameInput.touch_mode
 	if stats == null:
 		stats = BikeStats.new()
 	mass = stats.mass
@@ -806,8 +810,14 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 	if absf(_rider_pitch) <= 0.05 and stats.air_pitch_assist > 0.0 and linear_velocity.length() > 3.0:
 		# Assistente: o nariz segue a trajetória, como um dardo.
 		var velocity := linear_velocity - pitch_axis * linear_velocity.dot(pitch_axis)
+		var gain := stats.air_pitch_assist
+		if landing_assist:
+			var landing := _landing_direction()
+			if landing != Vector3.ZERO:
+				velocity = landing - pitch_axis * landing.dot(pitch_axis)
+				gain = maxf(gain, 3.0)
 		var error := (-global_basis.z).signed_angle_to(velocity, pitch_axis)
-		var target_rate := error * stats.air_pitch_assist
+		var target_rate := error * gain
 		# Girando rápido (soltou no meio de um mortal): freia forte; giro lento: suave.
 		var blend := lerpf(2.0, stats.air_release_brake, clampf((absf(rate) - 2.0) / 3.0, 0.0, 1.0))
 		av += pitch_axis * (target_rate - rate) * clampf(blend * delta, 0.0, 1.0)
@@ -822,6 +832,36 @@ func _rider_weight_air(av: Vector3, delta: float) -> Vector3:
 		var yaw_rate := av.dot(Vector3.UP)
 		av += Vector3.UP * (yaw_error * stats.air_yaw_align - yaw_rate) * clampf(5.0 * delta, 0.0, 1.0)
 	return av
+
+
+## Assistência de pouso: direção (subindo ou descendo a rampa) do chão onde a moto vai cair,
+## no rumo em que ela voa. Longe do pouso mistura com a trajetória (o nariz segue o voo
+## e só perto do chão copia a inclinação do pouso). Vetor zero = não achou chão.
+func _landing_direction() -> Vector3:
+	var space := get_world_3d().direct_space_state
+	var below := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.DOWN * 60.0,
+			_front_ray.collision_mask, [get_rid()])
+	var hit := space.intersect_ray(below)
+	if hit.is_empty():
+		return Vector3.ZERO
+	var g := absf(get_gravity().y) if absf(get_gravity().y) > 0.1 else 9.8
+	var height := global_position.y - (hit["position"] as Vector3).y
+	var vy := linear_velocity.y
+	var t := (vy + sqrt(maxf(vy * vy + 2.0 * g * maxf(height, 0.0), 0.0))) / g
+	var flat := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	if flat.length() < 1.0:
+		return Vector3.ZERO
+	var spot := global_position + flat * t
+	var down := PhysicsRayQueryParameters3D.create(spot + Vector3.UP * 20.0, spot + Vector3.DOWN * 60.0,
+			_front_ray.collision_mask, [get_rid()])
+	var land := space.intersect_ray(down)
+	if land.is_empty():
+		return Vector3.ZERO
+	var normal: Vector3 = land["normal"]
+	var slope := (flat - normal * flat.dot(normal)).normalized()
+	# Mistura: a mais de 1 s do pouso segue o voo; a menos de 0,4 s, a rampa.
+	var weight := 1.0 - clampf((t - 0.4) / 0.6, 0.0, 1.0)
+	return linear_velocity.normalized().slerp(slope, weight)
 
 
 ## Deslizando: segura a altura e o ângulo pela média do terreno, não onda a onda
