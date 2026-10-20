@@ -1,4 +1,4 @@
-[gd_scene load_steps=45 format=3]
+[gd_scene load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="bike"]
@@ -20,7 +20,6 @@
 [ext_resource type="Material" path="res://assets/materials/stadium/checker.tres" id="checker"]
 [ext_resource type="Material" path="res://assets/materials/stadium/metal.tres" id="metal"]
 [ext_resource type="Material" path="res://assets/materials/stadium/light_panel.tres" id="light_panel"]
-[ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="hints"]
 [ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="switcher"]
 [ext_resource type="Script" path="res://scripts/tracks/track_wear.gd" id="wear"]
 [ext_resource type="Shader" path="res://assets/materials/stadium/pixel_sky.gdshader" id="sky_shader"]
@@ -336,20 +335,6 @@ theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 44
 script = ExtResource("popup")
 bike = NodePath("../../Bike")
-
-[node name="ControlHints" type="Label" parent="HUD"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -124.0
-offset_right = 1000.0
-offset_bottom = -16.0
-grow_vertical = 0
-vertical_alignment = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
-script = ExtResource("hints")
 
 [node name="CameraSwitcher" type="Node" parent="." node_paths=PackedStringArray("bike", "chase_camera")]
 script = ExtResource("switcher")

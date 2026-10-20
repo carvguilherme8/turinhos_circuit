@@ -1,11 +1,10 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="1_ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="2_bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/ui/landing_popup.gd" id="5_popup"]
-[ext_resource type="Script" path="res://scripts/ui/control_hints.gd" id="6_hints"]
 [ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="7_switcher"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
@@ -244,20 +243,6 @@ theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 44
 script = ExtResource("5_popup")
 bike = NodePath("../../Bike")
-
-[node name="ControlHints" type="Label" parent="HUD"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -124.0
-offset_right = 1000.0
-offset_bottom = -16.0
-grow_vertical = 0
-vertical_alignment = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
-script = ExtResource("6_hints")
 
 [node name="CameraSwitcher" type="Node" parent="." node_paths=PackedStringArray("bike", "chase_camera")]
 script = ExtResource("7_switcher")

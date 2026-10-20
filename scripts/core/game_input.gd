@@ -15,7 +15,6 @@ const ACTIONS := {
 	"freio_mao": [KEY_SPACE],
 	"resetar_moto": [KEY_R],
 	"trocar_camera": [KEY_C],
-	"alternar_dicas": [KEY_H],
 	"reiniciar_corrida": [KEY_BACKSPACE],
 	"manobra_cancan_esquerda": [KEY_Q],
 	"manobra_cancan_direita": [KEY_E],
@@ -26,7 +25,6 @@ const ACTIONS := {
 const PAD_BUTTONS := {
 	"freio_mao": JOY_BUTTON_A,
 	"trocar_camera": JOY_BUTTON_BACK,
-	"alternar_dicas": JOY_BUTTON_DPAD_UP,
 	"reiniciar_corrida": JOY_BUTTON_DPAD_DOWN,
 	"manobra_cancan_esquerda": JOY_BUTTON_LEFT_SHOULDER,
 	"manobra_cancan_direita": JOY_BUTTON_RIGHT_SHOULDER,
