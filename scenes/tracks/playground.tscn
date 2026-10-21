@@ -1,9 +1,8 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/tracks/ramp.gd" id="1_ramp"]
 [ext_resource type="PackedScene" path="res://scenes/bike/bike.tscn" id="2_bike"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
-[ext_resource type="Script" path="res://scripts/ui/debug_hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/ui/landing_popup.gd" id="5_popup"]
 [ext_resource type="Script" path="res://scripts/camera/camera_switcher.gd" id="7_switcher"]
 
@@ -221,17 +220,6 @@ script = ExtResource("3_camera")
 target = NodePath("../Bike")
 
 [node name="HUD" type="CanvasLayer" parent="."]
-
-[node name="DebugLabel" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
-offset_left = 20.0
-offset_top = 16.0
-offset_right = 620.0
-offset_bottom = 140.0
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 20
-script = ExtResource("4_hud")
-bike = NodePath("../../Bike")
 
 [node name="LandingPopup" type="Label" parent="HUD" node_paths=PackedStringArray("bike")]
 anchor_right = 1.0
