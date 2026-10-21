@@ -13,7 +13,7 @@ extends Node3D
 @export var wind: Vector3 = Vector3(2.5, 0.0, 1.0)
 @export var drop_color: Color = Color(0.78, 0.82, 0.9, 0.28)
 @export var rain_sound: AudioStream
-@export var rain_volume_db: float = -9.0
+@export var rain_volume_db: float = -11.5
 ## Lama que as motos levantam (cores do torrão, do mais escuro ao mais claro).
 @export var mud_dark: Color = Color(0.22, 0.13, 0.08)
 @export var mud_light: Color = Color(0.42, 0.26, 0.15)
@@ -29,6 +29,7 @@ func _ready() -> void:
 		var player := AudioStreamPlayer.new()
 		player.stream = rain_sound
 		player.volume_db = rain_volume_db
+		player.bus = &"Ambiente"
 		player.autoplay = true
 		add_child(player)
 	_muddy_bikes.call_deferred()

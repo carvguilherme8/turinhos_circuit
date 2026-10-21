@@ -54,6 +54,7 @@ func _ready() -> void:
 	PlayerProfile.ensure_loaded()
 	_sfx = AudioStreamPlayer.new()
 	_sfx.volume_db = -6.0
+	_sfx.bus = &"Interface"
 	add_child(_sfx)
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)

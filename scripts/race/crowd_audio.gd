@@ -15,7 +15,9 @@ var _last_cheer: int = -1
 
 
 func _ready() -> void:
+	bus = &"Ambiente"
 	_cheer = AudioStreamPlayer.new()
+	_cheer.bus = &"Efeitos"
 	add_child(_cheer)
 	if bike:
 		bike.connect("tricks_landed", _on_tricks_landed)

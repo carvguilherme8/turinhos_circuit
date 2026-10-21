@@ -39,6 +39,7 @@ func _ready() -> void:
 	_sfx = AudioStreamPlayer.new()
 	_sfx.stream = ring_sound
 	_sfx.volume_db = -4.0
+	_sfx.bus = &"Efeitos"
 	add_child(_sfx)
 	if rings_root:
 		for ring in rings_root.get_children():

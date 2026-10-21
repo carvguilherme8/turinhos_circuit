@@ -9,7 +9,7 @@ extends Node3D
 @export var slide_stream: AudioStream
 ## Volume de cada camada no máximo (jogador).
 @export var roll_volume_db: float = -12.0
-@export var slide_volume_db: float = -5.0
+@export var slide_volume_db: float = -8.0
 ## Ângulo de derrapagem (graus) que já conta como derrapagem total.
 @export var full_drift_angle: float = 25.0
 ## Rapidez com que o som entra e sai (por segundo).
@@ -49,6 +49,7 @@ func _make_player(stream: AudioStream, positional: bool) -> Node:
 	else:
 		player = AudioStreamPlayer.new()
 	player.set("stream", stream)
+	player.set("bus", &"Efeitos")
 	player.set("volume_db", -80.0)
 	add_child(player)
 	player.call("play")

@@ -23,6 +23,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 [autoload]
 
 GameInput="*res://scripts/core/game_input.gd"
+AudioMix="*res://scripts/core/audio_mix.gd"
 
 [display]
 

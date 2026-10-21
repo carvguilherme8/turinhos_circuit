@@ -50,6 +50,7 @@ func _make_player(stream: AudioStream, positional: bool) -> Node:
 	else:
 		player = AudioStreamPlayer.new()
 	player.set("stream", stream)
+	player.set("bus", &"Motor")
 	add_child(player)
 	player.call("play")
 	return player

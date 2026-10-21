@@ -43,6 +43,7 @@ func _ready() -> void:
 	get_tree().paused = false
 	_sfx = AudioStreamPlayer.new()
 	_sfx.volume_db = -6.0
+	_sfx.bus = &"Interface"
 	add_child(_sfx)
 	_backdrop = Control.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -237,6 +238,7 @@ func _poll_loading() -> void:
 		_menu.visible = true
 		return
 	PauseMenu.skip_start_menu()
+	AudioMix.hold()
 	get_tree().change_scene_to_packed(scene)
 
 

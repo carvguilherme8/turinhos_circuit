@@ -52,7 +52,8 @@ var _start_audio: AudioStreamPlayer
 func _ready() -> void:
 	_countdown = countdown_seconds
 	_start_audio = AudioStreamPlayer.new()
-	_start_audio.volume_db = -4.0
+	_start_audio.volume_db = -9.0
+	_start_audio.bus = &"Efeitos"
 	add_child(_start_audio)
 	for i in bikes.size():
 		var bike := bikes[i]
@@ -87,6 +88,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
+	AudioMix.hold()
 	get_tree().reload_current_scene()
 
 

@@ -333,6 +333,7 @@ ring_sound = ExtResource("sfx_whoosh")
 
 [node name="Wind" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("sfx_wind")
+bus = &"Ambiente"
 volume_db = -16.0
 autoplay = true
 '''
